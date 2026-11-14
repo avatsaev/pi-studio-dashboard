@@ -2936,7 +2936,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "futures-util",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "keyring",
  "log",
  "pistudiodashboard-client",
@@ -2957,7 +2957,7 @@ name = "pistudiodashboard-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "pistudiodashboard-config",
  "pistudiodashboard-engine",
  "serde_json",
@@ -2969,7 +2969,7 @@ name = "pistudiodashboard-client"
 version = "0.1.0"
 dependencies = [
  "futures-util",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "log",
  "pistudiodashboard-config",
  "pistudiodashboard-ingest",
