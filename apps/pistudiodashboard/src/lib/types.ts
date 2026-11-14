@@ -52,6 +52,8 @@ export interface UiState {
   groupBy: GroupBy;
   /** Zoom of the window's content in percent; the app applies it to the webview, nothing here scales. */
   zoom: number;
+  /** Keys of the groups drawn collapsed (`GroupHeader.key`). */
+  collapsedGroups: string[];
   focusItem: FocusItem | null;
   gridWindow: GridWindow;
   dialog: Dialog | null;
@@ -163,14 +165,20 @@ export type GroupBy = "none" | "workspace";
 
 /** One section of the grouped grid: a workspace on one daemon. */
 export interface GroupHeader {
-  /** Stable and unique among the groups; the React key. */
+  /** Stable and unique among the groups; the React key, and what `view.toggleGroup` takes. */
   key: string;
+  /** Position among all groups. */
+  index: number;
   serverId: string;
   daemonName: string;
   label: string;
   /** The full workspace path; null for the "No workspace" group. */
   path: string | null;
+  /** Agents in the group (what the badge says), whether or not its cards are drawn. */
   count: number;
+  /** Cards of the group in the card list: `count`, or 0 when collapsed. */
+  shown: number;
+  collapsed: boolean;
   /** Index of the group's first card in the whole ordered list; it can lie before `cards.start`. */
   start: number;
   needsAttention: boolean;
@@ -181,7 +189,7 @@ export interface GroupsView {
   total: number;
   /** The groups that touch `cards.window`. */
   window: GroupHeader[];
-  /** Every group's card count, in order; only when `cards.virtualised`. */
+  /** Every group's number of cards in the list (0 when collapsed), in order; only when `cards.virtualised`. */
   layout?: number[];
 }
 

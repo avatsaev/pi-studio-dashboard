@@ -47,13 +47,27 @@ function emptyState(document: MonitorView | null, onClearFilters: () => void, on
 }
 
 /** One section of the grouped grid: its title and its cards, with spacers for the rows not drawn. */
-function GroupSection({ group, showDaemon, spacers, children }: { group: GroupHeader; showDaemon: boolean; spacers?: { paddingTop: number; paddingBottom: number }; children: ReactNode }) {
+function GroupSection({
+  group,
+  showDaemon,
+  spacers,
+  onToggle,
+  children,
+}: {
+  group: GroupHeader;
+  showDaemon: boolean;
+  spacers?: { paddingTop: number; paddingBottom: number };
+  onToggle: (key: string) => void;
+  children: ReactNode;
+}) {
   return (
     <section className={styles.group} aria-label={group.label}>
-      <WorkspaceHeader group={group} showDaemon={showDaemon} />
-      <div className={styles.rows} style={spacers}>
-        {children}
-      </div>
+      <WorkspaceHeader group={group} showDaemon={showDaemon} onToggle={onToggle} />
+      {!group.collapsed && (
+        <div className={styles.rows} style={spacers}>
+          {children}
+        </div>
+      )}
     </section>
   );
 }
@@ -71,6 +85,7 @@ export function CardGrid({
   onWindow,
   onClearFilters,
   onAddDaemon,
+  onToggleGroup,
 }: {
   document: MonitorView | null;
   now: number;
@@ -78,6 +93,8 @@ export function CardGrid({
   onWindow: (window: { start: number; count: number }) => void;
   onClearFilters: () => void;
   onAddDaemon: () => void;
+  /** Collapse or expand a group (`view.toggleGroup`). */
+  onToggleGroup: (key: string) => void;
 }) {
   const cards = document?.cards;
   const scroller = useRef<HTMLElement>(null);
@@ -170,7 +187,9 @@ export function CardGrid({
     return () => clearTimeout(timer);
   }, [virtualised, range]);
 
-  if (!cards || cards.total === 0) {
+  // With every group collapsed there are no cards in the list but there are still groups to show.
+  const onlyTitles = groupBy === "workspace" && (document?.groups?.total ?? 0) > 0;
+  if (!cards || (cards.total === 0 && !onlyTitles)) {
     return (
       <section className={styles.grid} aria-label="Agents" ref={scroller}>
         <div className={styles.empty}>{emptyState(document, onClearFilters, onAddDaemon)}</div>
@@ -191,9 +210,15 @@ export function CardGrid({
             {groups.window.map((group, n) => {
               const drawn = plan?.groups[n];
               const from = group.start - cards.start + (drawn?.cardFrom ?? 0);
-              const members = cards.window.slice(Math.max(0, from), Math.max(0, from + (drawn ? drawn.cardTo - drawn.cardFrom : group.count)));
+              const members = cards.window.slice(Math.max(0, from), Math.max(0, from + (drawn ? drawn.cardTo - drawn.cardFrom : group.shown)));
               return (
-                <GroupSection key={group.key} group={group} showDaemon={showDaemon} spacers={drawn ? { paddingTop: drawn.padTop, paddingBottom: drawn.padBottom } : undefined}>
+                <GroupSection
+                  key={group.key}
+                  group={group}
+                  showDaemon={showDaemon}
+                  onToggle={onToggleGroup}
+                  spacers={drawn ? { paddingTop: drawn.padTop, paddingBottom: drawn.padBottom } : undefined}
+                >
                   {members.map((card) => (
                     <AgentCard key={`${card.serverId}/${card.agentId}`} card={card} now={now} onSelect={onSelect} showWorkspace={false} />
                   ))}

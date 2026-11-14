@@ -42,6 +42,10 @@ struct ViewParams {
     window: Option<(usize, usize)>,
     rail_collapsed: bool,
     group_by: GroupBy,
+    /// `group_key`s of the groups drawn collapsed (their cards are not in the card list).
+    collapsed_groups: Vec<String>,
+    /// Also list every group's key (`groups.keys`): what "collapse all" needs.
+    include_group_keys: bool,
 }
 
 fn bad(msg: String) -> EngineError {
@@ -96,6 +100,8 @@ fn read_params(p: &Value) -> Result<ViewParams> {
         window: window(p)?,
         rail_collapsed: params::bool_param(p, "railCollapsed")?.unwrap_or(false),
         group_by: group_by(p)?,
+        collapsed_groups: string_list(p, "collapsedGroups")?,
+        include_group_keys: params::bool_param(p, "includeGroupKeys")?.unwrap_or(false),
     })
 }
 
@@ -184,30 +190,42 @@ fn group_key(g: &WorkspaceGroup) -> String {
 
 /// The `groups` block: headers of the groups that touch the card slice `[start, end)`, and (when
 /// the list is virtualised) every group's card count so the frontend can place any header.
-fn groups_block(groups: &[WorkspaceGroup], names: &Names<'_>, start: usize, end: usize, virtualised: bool) -> Value {
+///
+/// A collapsed group has `shown: 0` (none of its cards are in the list) next to its real `count`;
+/// it sits at one index of the list, so it belongs to the slice when that index is inside
+/// `[start, end]` (a run of collapsed groups all share it).
+fn groups_block(groups: &[WorkspaceGroup], collapsed: &[bool], names: &Names<'_>, start: usize, end: usize, virtualised: bool, with_keys: bool) -> Value {
     let mut first = 0usize;
     let mut window = Vec::new();
-    for g in groups {
-        let count = g.cards.len();
-        if first < end && first + count > start {
+    for (index, g) in groups.iter().enumerate() {
+        let shown = if collapsed[index] { 0 } else { g.cards.len() };
+        let touches = if shown == 0 { first >= start && first <= end } else { first < end && first + shown > start };
+        if touches {
             window.push(json!({
                 "key": group_key(g),
+                "index": index,
                 "serverId": g.server_id,
                 "daemonName": names.get(&g.server_id),
                 "label": g.label,
                 "path": g.workspace,
-                "count": count,
+                "count": g.cards.len(),
+                "shown": shown,
+                "collapsed": collapsed[index],
                 "start": first,
                 "needsAttention": g.needs_attention,
             }));
         }
-        first += count;
+        first += shown;
     }
     let mut block = Map::new();
     block.insert("total".into(), json!(groups.len()));
     block.insert("window".into(), Value::Array(window));
     if virtualised {
-        block.insert("layout".into(), json!(groups.iter().map(|g| g.cards.len()).collect::<Vec<_>>()));
+        let layout: Vec<usize> = groups.iter().zip(collapsed).map(|(g, c)| if *c { 0 } else { g.cards.len() }).collect();
+        block.insert("layout".into(), json!(layout));
+    }
+    if with_keys {
+        block.insert("keys".into(), json!(groups.iter().map(group_key).collect::<Vec<_>>()));
     }
     Value::Object(block)
 }
@@ -310,7 +328,9 @@ pub(crate) fn monitor_view(s: &Session, p: &Value) -> Result<Value> {
     let (order, labels, groups) = if vp.group_by == GroupBy::Workspace {
         let groups = grouped_order(&m, &filters);
         let labels: Labels = groups.iter().filter_map(|g| g.workspace.clone().map(|w| (w, g.label.clone()))).collect();
-        (groups.iter().flat_map(|g| g.cards.iter().cloned()).collect::<Vec<_>>(), labels, Some(groups))
+        let collapsed: Vec<bool> = groups.iter().map(|g| vp.collapsed_groups.contains(&group_key(g))).collect();
+        let shown = groups.iter().zip(&collapsed).filter(|(_, c)| !**c).flat_map(|(g, _)| g.cards.iter().cloned()).collect::<Vec<_>>();
+        (shown, labels, Some((groups, collapsed)))
     } else {
         (card_order(&m, &filters), workspace_labels(&m, &filters), None)
     };
@@ -339,8 +359,8 @@ pub(crate) fn monitor_view(s: &Session, p: &Value) -> Result<Value> {
         "railCollapsed": vp.rail_collapsed,
         "groupBy": vp.group_by.name(),
     });
-    if let (Some(groups), Some(obj)) = (&groups, view.as_object_mut()) {
-        obj.insert("groups".into(), groups_block(groups, &names, start, end, total > VIRTUALISE_ABOVE));
+    if let (Some((groups, collapsed)), Some(obj)) = (&groups, view.as_object_mut()) {
+        obj.insert("groups".into(), groups_block(groups, collapsed, &names, start, end, total > VIRTUALISE_ABOVE, vp.include_group_keys));
     }
     Ok(view)
 }
@@ -617,6 +637,13 @@ mod tests {
     }
 
     #[test]
+    fn an_untitled_agent_reads_new_chat_not_its_id() {
+        let mut s = with_cwds(&[("0b5300b6-8761-46d6-8353-bea1", Some("/w"), AgentStatus::Idle)]);
+        let v = s.execute("document.inspect", json!({})).unwrap();
+        assert_eq!(v["cards"]["window"][0]["title"], "New chat");
+    }
+
+    #[test]
     fn workspace_mode_groups_cards_and_describes_the_groups() {
         let mut s = with_cwds(&[
             ("n", None, AgentStatus::Running),
@@ -636,13 +663,6 @@ mod tests {
         assert_eq!(v["cards"]["window"][0]["workspaceLabel"], "b/app", "a card's label is its header's");
         let flat = s.execute("document.inspect", json!({})).unwrap();
         assert_eq!((&flat["totals"], &flat["statusChips"]), (&v["totals"], &v["statusChips"]), "grouping changes neither totals nor chips");
-    #[test]
-    fn an_untitled_agent_reads_new_chat_not_its_id() {
-        let mut s = with_cwds(&[("0b5300b6-8761-46d6-8353-bea1", Some("/w"), AgentStatus::Idle)]);
-        let v = s.execute("document.inspect", json!({})).unwrap();
-        assert_eq!(v["cards"]["window"][0]["title"], "New chat");
-    }
-
     }
 
     #[test]
@@ -685,6 +705,99 @@ mod tests {
             assert_eq!(h["count"], layout[*i as usize]);
         }
         assert!(heads.first().unwrap()["start"].as_u64().unwrap() <= from, "the first header may start before the slice");
+    }
+
+    fn collapsible() -> Session {
+        with_cwds(&[
+            ("a1", Some("/w/a"), AgentStatus::Running),
+            ("a2", Some("/w/a"), AgentStatus::Idle),
+            ("b1", Some("/w/b"), AgentStatus::Idle),
+            ("c1", Some("/w/c"), AgentStatus::Idle),
+            ("c2", Some("/w/c"), AgentStatus::Idle),
+        ])
+    }
+
+    fn key_of(v: &Value, label: &str) -> String {
+        v["groups"]["window"].as_array().unwrap().iter().find(|g| g["label"] == label).unwrap()["key"].as_str().unwrap().to_owned()
+    }
+
+    #[test]
+    fn a_collapsed_group_keeps_its_header_and_count_but_none_of_its_cards() {
+        let mut s = collapsible();
+        let open = s.execute("document.inspect", json!({"groupBy": "workspace"})).unwrap();
+        let b = key_of(&open, "b");
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace", "collapsedGroups": [b]})).unwrap();
+        let ids: Vec<&str> = v["cards"]["window"].as_array().unwrap().iter().map(|c| c["agentId"].as_str().unwrap()).collect();
+        assert_eq!(ids, ["a1", "a2", "c1", "c2"]);
+        assert_eq!(v["cards"]["total"], 4);
+        let heads = v["groups"]["window"].as_array().unwrap();
+        let summary: Vec<(String, u64, u64, bool, u64)> = heads
+            .iter()
+            .map(|g| {
+                (
+                    g["label"].as_str().unwrap().to_owned(),
+                    g["count"].as_u64().unwrap(),
+                    g["shown"].as_u64().unwrap(),
+                    g["collapsed"].as_bool().unwrap(),
+                    g["start"].as_u64().unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(summary, [("a".into(), 2, 2, false, 0), ("b".into(), 1, 0, true, 2), ("c".into(), 2, 2, false, 2)]);
+        assert_eq!(heads.iter().map(|g| g["index"].as_u64().unwrap()).collect::<Vec<_>>(), [0, 1, 2]);
+        assert_eq!(v["totals"], open["totals"], "totals do not depend on what is collapsed");
+    }
+
+    #[test]
+    fn with_every_group_collapsed_the_list_is_empty_but_the_groups_are_not() {
+        let mut s = collapsible();
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace", "includeGroupKeys": true})).unwrap();
+        let keys = v["groups"]["keys"].clone();
+        assert_eq!(keys.as_array().unwrap().len(), 3);
+        let all = s.execute("document.inspect", json!({"groupBy": "workspace", "collapsedGroups": keys})).unwrap();
+        assert_eq!((all["cards"]["total"].clone(), all["groups"]["total"].clone()), (json!(0), json!(3)));
+        assert_eq!(all["groups"]["window"].as_array().unwrap().len(), 3);
+        assert!(all["groups"]["window"].as_array().unwrap().iter().all(|g| g["shown"] == 0 && g["collapsed"] == true));
+        assert!(v["groups"].get("layout").is_none() && all["groups"].get("keys").is_none(), "keys only on request");
+    }
+
+    #[test]
+    fn unknown_collapsed_keys_are_ignored_and_ill_typed_ones_refused() {
+        let mut s = collapsible();
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace", "collapsedGroups": ["nope"]})).unwrap();
+        assert_eq!(v["cards"]["total"], 5);
+        for bad in [json!({"collapsedGroups": "x"}), json!({"collapsedGroups": [1]}), json!({"includeGroupKeys": "yes"})] {
+            assert!(matches!(s.execute("document.inspect", bad), Err(EngineError::BadParams(_))));
+        }
+    }
+
+    #[test]
+    fn collapsed_groups_in_a_virtualised_view_have_zero_layout_and_belong_to_the_slice_at_their_index() {
+        // 150 groups of 2 cards; every third group collapsed => 200 cards in the list.
+        let ids: Vec<String> = (0..300).map(|i| format!("a{i:03}")).collect();
+        let paths: Vec<String> = (0..300).map(|i| format!("/w/p{:03}", i / 2)).collect();
+        let rows: Vec<(&str, Option<&str>, AgentStatus)> = ids.iter().zip(&paths).map(|(i, p)| (i.as_str(), Some(p.as_str()), AgentStatus::Idle)).collect();
+        let mut s = with_cwds(&rows);
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace", "includeGroupKeys": true})).unwrap();
+        let keys: Vec<Value> = v["groups"]["keys"].as_array().unwrap().iter().enumerate().filter(|(i, _)| i % 3 == 0).map(|(_, k)| k.clone()).collect();
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace", "collapsedGroups": keys, "gridWindow": {"start": 90, "count": 30}})).unwrap();
+        assert_eq!(v["cards"]["total"], 200);
+        let layout: Vec<u64> = v["groups"]["layout"].as_array().unwrap().iter().map(|n| n.as_u64().unwrap()).collect();
+        assert_eq!((layout.len(), layout.iter().sum::<u64>()), (150, 200));
+        assert!(layout.iter().enumerate().all(|(i, n)| *n == if i % 3 == 0 { 0 } else { 2 }));
+        let (from, n) = (v["cards"]["start"].as_u64().unwrap(), v["cards"]["window"].as_array().unwrap().len() as u64);
+        let heads = v["groups"]["window"].as_array().unwrap();
+        // Contiguous indices, every drawn card's group present, collapsed ones sit at a start inside [from, from + n].
+        let idx: Vec<u64> = heads.iter().map(|g| g["index"].as_u64().unwrap()).collect();
+        assert!(idx.windows(2).all(|w| w[1] == w[0] + 1));
+        for g in heads {
+            let start = g["start"].as_u64().unwrap();
+            if g["collapsed"] == true {
+                assert!(start >= from && start <= from + n);
+            } else {
+                assert!(start < from + n && start + g["shown"].as_u64().unwrap() > from);
+            }
+        }
     }
 
     #[test]

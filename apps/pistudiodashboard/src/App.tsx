@@ -104,6 +104,7 @@ export function App({ backend }: { backend: Backend }) {
           onWindow={(window_) => run("view.setGridWindow", window_)}
           onClearFilters={clearFilters}
           onAddDaemon={() => void backend.invoke("daemon.add")}
+          onToggleGroup={(key) => run("view.toggleGroup", { key })}
         />
         {drill ? <DrillDownPanel drill={drill} now={now} onClose={() => run("agent.deselect")} /> : <AttentionRail collapsed={view.ui.attentionRailCollapsed} />}
       </main>

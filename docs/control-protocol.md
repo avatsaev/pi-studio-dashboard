@@ -71,6 +71,7 @@ An unknown method is an error that lists the methods.
 | `filterDaemons` | Array of at most 50 serverIds, each 1-128 characters (empty = all daemons) |
 | `filterStatuses` | Array of distinct status words: `initializing`, `idle`, `running`, `error`, `closed`, `unknown` (empty = all) |
 | `attentionRailCollapsed` | Boolean |
+| `collapsedGroups` | Array of at most 5,000 distinct group keys (strings of 1-1,024 characters): the workspace groups drawn collapsed. Session state, not saved |
 | `zoom` | A whole percent from 50 to 300, otherwise `` `zoom` is a whole percent from 50 to 300 ``. Saved to the config file; the app applies it to the window (page zoom) |
 | `groupBy` | `"none"` or `"workspace"`; otherwise `` `groupBy` is one of: none, workspace ``. A change is saved to the config file (`settings.groupBy`) and sends the card window back to the top unless the same request sets `gridWindow` |
 | `focusItem` | Only `null` (clear). Setting it is a later command |
@@ -81,12 +82,14 @@ An unknown method is an error that lists the methods.
 
 ### Commands
 
-- Engine: `command.list {filter?}`, `document.inspect {filterDaemons?, filterStatuses?, gridWindow?, railCollapsed?, groupBy?}`
+- Engine: `command.list {filter?}`, `document.inspect {filterDaemons?, filterStatuses?, gridWindow?, railCollapsed?, groupBy?, collapsedGroups?, includeGroupKeys?}`
   and `feed.ingest {events}` (internal: the app's client feeds it batches of daemon events; a
   malformed batch is an error and changes nothing; the result lists `applied`, the `effects` the
   batch produced and any `skipped` ones with the reason).
 - Shell (`layer: "shell"`, view state only): `view.setTheme {theme}`, `view.filterDaemons {serverIds}`,
   `view.setGroupBy {groupBy}` (View menu: `Group: None` / `Group: By Workspace`),
+  `view.toggleGroup {key}` (collapse or expand a group by the `key` of its header), `view.collapseAllGroups {}`
+  and `view.expandAllGroups {}` (View menu; disabled while not grouped by workspace),
   `view.zoomIn {}` (`Cmd+=`), `view.zoomOut {}` (`Cmd+-`) and `view.zoomReset {}` (`Cmd+0`; each disabled with its reason at the end of the range),
   `view.filterStatuses {statuses}`, `view.toggleAttentionRail {}` (`Cmd+Shift+A`) and
   `view.setGridWindow {start, count}`. They validate exactly like the matching `ui.set` field; a
@@ -108,9 +111,12 @@ An unknown method is an error that lists the methods.
   view always carries `groupBy`. With `"workspace"` the cards are ordered group by group (a group is one
   workspace on one daemon; groups with the best-ranked card first, `No workspace` last, then the usual
   card order inside) and the view has `groups: {total, window, layout?}`. `window` lists the groups that
-  touch `cards.window` as `{key, serverId, daemonName, label, path, count, start, needsAttention}`
+  touch `cards.window` as `{key, index, serverId, daemonName, label, path, count, shown, collapsed, start, needsAttention}`
   (`start` is the index of the group's first card in the whole ordered list; a group can begin before
-  `cards.start`). `layout`, only when `cards.virtualised`, holds the card count of every group in order.
+  `cards.start`). `count` is the agents in the group; `shown` the cards of it in the list: `count`, or 0 when
+  the group is in `collapsedGroups` (its cards are then not in `cards` at all, and a collapsed group
+  belongs to the slice when its `start` is inside it). `layout`, only when `cards.virtualised`, holds the
+  `shown` of every group in order; `includeGroupKeys` adds `groups.keys`, every group's key in order.
 
 - Daemons (engine): `daemon.add {name, host, port, tls?, webUiUrl?, password?}`,
   `daemon.edit {entryId, name?, host?, port?, tls?, webUiUrl?}`, `daemon.remove {entryId}`,

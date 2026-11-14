@@ -1,6 +1,13 @@
 /* Exactly `--pi-group-header-height` tall: the virtualised grouped grid computes offsets from it. */
 .header {
   display: flex;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
   align-items: center;
   gap: var(--pi-spacing-8);
   box-sizing: border-box;
@@ -9,6 +16,21 @@
   padding: 0 var(--pi-spacing-4);
   border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
   white-space: nowrap;
+}
+
+.header:hover {
+  background: var(--pi-color-surface1);
+}
+
+.header:focus-visible {
+  outline: var(--pi-border-width-2) solid var(--pi-color-accent);
+  outline-offset: calc(-1 * var(--pi-border-width-2));
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  color: var(--pi-color-foregroundMuted);
 }
 
 .label {

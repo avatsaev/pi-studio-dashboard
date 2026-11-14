@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { groupOffsets, visibleGroupedRange } from "../lib/groupLayout";
@@ -8,7 +9,7 @@ import { CardGrid } from "./CardGrid";
 
 const noop = () => {};
 function grid(document: MonitorView | null) {
-  return <CardGrid document={document} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} />;
+  return <CardGrid document={document} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />;
 }
 
 describe("CardGrid grouped by workspace", () => {
@@ -16,7 +17,7 @@ describe("CardGrid grouped by workspace", () => {
     render(grid(groupedView().document));
     const sections = within(screen.getByRole("region", { name: "Agents" })).getAllByRole("region");
     expect(sections.map((s) => s.getAttribute("aria-label"))).toEqual(["a/app", "b/app", "docs", "No workspace"]);
-    expect(sections.map((s) => within(s).getAllByRole("button").length)).toEqual([4, 2, 1, 2]);
+    expect(sections.map((s) => s.querySelectorAll("button[aria-pressed]").length)).toEqual([4, 2, 1, 2]);
     expect(within(sections[1] as HTMLElement).getByRole("button", { name: /b\/app agent 1/ })).toBeTruthy();
   });
 
@@ -32,7 +33,7 @@ describe("CardGrid grouped by workspace", () => {
   it("leaves the workspace off the cards (the header says it)", () => {
     render(grid(groupedView().document));
     const section = screen.getByRole("region", { name: "b/app" });
-    const card = within(section).getAllByRole("button")[0] as HTMLElement;
+    const card = section.querySelector("button[aria-pressed]") as HTMLElement;
     expect(card.querySelector('[class*="workspace"]')).toBeNull();
   });
 
@@ -127,7 +128,7 @@ describe("CardGrid grouped by workspace, virtualised", () => {
   it("keeps the whole list's height whatever slice it holds: spacers plus drawn sections add up exactly", () => {
     for (const start of [0, 3, 250, 251, 252, 400, 495, 499]) {
       const { unmount } = render(
-        <CardGrid document={shellView(start, 40)} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} />,
+        <CardGrid document={shellView(start, 40)} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />,
       );
       expect(drawnTotal(), `slice at ${start}`).toBe(offsets.total);
       unmount();
@@ -135,8 +136,8 @@ describe("CardGrid grouped by workspace, virtualised", () => {
   });
 
   it("draws only sections and cards of the slice, each card once and in order", () => {
-    render(<CardGrid document={shellView(250, 40)} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} />);
-    const ids = screen.getAllByRole("button").map((b) => b.getAttribute("aria-pressed") && (b.querySelector('[class*="title"]')?.textContent ?? ""));
+    render(<CardGrid document={shellView(250, 40)} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />);
+    const ids = Array.from(document.querySelectorAll("button[aria-pressed]")).map((b) => b.querySelector('[class*="title"]')?.textContent ?? "");
     expect(ids.length).toBeGreaterThan(0);
     expect(ids.length).toBeLessThanOrEqual(200);
     expect(new Set(ids).size).toBe(ids.length);
@@ -147,7 +148,7 @@ describe("CardGrid grouped by workspace, virtualised", () => {
   it("reports the visible card range of the grouped layout through the throttled window callback", () => {
     vi.useFakeTimers();
     const onWindow = vi.fn<(w: { start: number; count: number }) => void>();
-    render(<CardGrid document={shellView(0, 40)} now={Date.now()} onSelect={noop} onWindow={onWindow} onClearFilters={noop} onAddDaemon={noop} />);
+    render(<CardGrid document={shellView(0, 40)} now={Date.now()} onSelect={noop} onWindow={onWindow} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />);
     screenSize.top = 20_000;
     act(() => {
       fireEvent.scroll(screen.getByRole("region", { name: "Agents" }));
@@ -162,7 +163,7 @@ describe("CardGrid grouped by workspace, virtualised", () => {
   it("recomputes the columns, and so the range, when the width changes", () => {
     vi.useFakeTimers();
     const onWindow = vi.fn<(w: { start: number; count: number }) => void>();
-    render(<CardGrid document={shellView(0, 40)} now={Date.now()} onSelect={noop} onWindow={onWindow} onClearFilters={noop} onAddDaemon={noop} />);
+    render(<CardGrid document={shellView(0, 40)} now={Date.now()} onSelect={noop} onWindow={onWindow} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />);
     screenSize.top = 5_000;
     screenSize.width = 1700;
     act(() => {
@@ -174,7 +175,7 @@ describe("CardGrid grouped by workspace, virtualised", () => {
   });
 
   it("goes back to the top when the layout changes", () => {
-    const { rerender } = render(<CardGrid document={groupedView().document} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} />);
+    const { rerender } = render(<CardGrid document={groupedView().document} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />);
     const region = screen.getByRole("region", { name: "Agents" });
     let top = 300;
     Object.defineProperty(region, "scrollTop", { configurable: true, get: () => top, set: (v: number) => {
@@ -182,7 +183,95 @@ describe("CardGrid grouped by workspace, virtualised", () => {
       },
     });
     const flat = { ...(groupedView().document as MonitorView), groupBy: "none" as const, groups: undefined };
-    rerender(<CardGrid document={flat} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} />);
+    rerender(<CardGrid document={flat} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />);
     expect(top).toBe(0);
+  });
+});
+
+describe("collapsing groups", () => {
+  it("a header is a button that says whether its group is open and asks the shell to toggle it", async () => {
+    const onToggleGroup = vi.fn<(key: string) => void>();
+    const view = groupedOf([
+      { label: "a", path: "/w/a", statuses: ["idle", "idle"] },
+      { label: "b", path: "/w/b", statuses: ["idle"], collapsed: true },
+    ]);
+    render(<CardGrid document={view.document} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={onToggleGroup} />);
+    const open = screen.getByRole("button", { name: /^a\b/ });
+    const closed = screen.getByRole("button", { name: /^b\b/ });
+    expect([open.getAttribute("aria-expanded"), closed.getAttribute("aria-expanded")]).toEqual(["true", "false"]);
+    await userEvent.click(closed);
+    expect(onToggleGroup).toHaveBeenCalledWith(expect.stringContaining("/w/b"));
+  });
+
+  it("a collapsed group is its title only, still with its count and attention warning", () => {
+    const view = groupedOf([
+      { label: "a", path: "/w/a", statuses: ["error", "idle", "idle"], collapsed: true },
+      { label: "b", path: "/w/b", statuses: ["idle"] },
+    ]);
+    render(grid(view.document));
+    const section = screen.getByRole("region", { name: "a" });
+    expect(section.querySelectorAll("button[aria-pressed]")).toHaveLength(0);
+    expect(within(section).getByText("3")).toBeTruthy();
+    expect(within(section).getByText("needs attention")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "b" }).querySelectorAll("button[aria-pressed]")).toHaveLength(1);
+  });
+
+  it("with every group collapsed the titles are shown, not the empty state", () => {
+    const view = groupedOf([
+      { label: "a", path: "/w/a", statuses: ["idle"], collapsed: true },
+      { label: "b", path: "/w/b", statuses: ["idle"], collapsed: true },
+    ]);
+    render(grid(view.document));
+    expect(screen.getAllByRole("region", { name: /^[ab]$/ })).toHaveLength(2);
+    expect(screen.queryByText(/No agents/)).toBeNull();
+  });
+
+  it("keeps the exact list height when groups are collapsed in a virtualised list", () => {
+    const groups: SampleGroup[] = Array.from({ length: 200 }, (_, i) => ({
+      label: `ws${String(i).padStart(3, "0")}`,
+      path: `/w/ws${String(i).padStart(3, "0")}`,
+      statuses: ["idle", "idle", "idle"],
+      collapsed: i % 4 !== 0,
+    }));
+    const layout = groups.map((g) => (g.collapsed ? 0 : g.statuses.length));
+    const offsets = groupOffsets(layout, { cols: COLS, rowHeight: PITCH, headerHeight: HEADER, gap: GAP });
+    const full = groupedOf(groups, true).document as MonitorView;
+    for (const [from, to] of [[0, 40], [20, 60], [100, 150]] as const) {
+      const heads = (full.groups?.window ?? []).filter((g) => (g.shown === 0 ? g.start >= from && g.start <= to : g.start < to && g.start + g.shown > from));
+      const doc: MonitorView = { ...full, cards: { ...full.cards, start: from, window: full.cards.window.slice(from, to) }, groups: { total: 200, window: heads, layout } };
+      const { unmount } = render(<CardGrid document={doc} now={Date.now()} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />);
+      const container = document.querySelector('[class*="groups"]') as HTMLElement;
+      const px = (el: HTMLElement, side: "paddingTop" | "paddingBottom") => Number.parseFloat(el.style[side] || "0");
+      let sum = px(container, "paddingTop") + px(container, "paddingBottom");
+      (Array.from(container.children) as HTMLElement[]).forEach((section, i) => {
+        const grid = section.children[1] as HTMLElement | undefined;
+        sum += HEADER;
+        if (grid) {
+          const rows = Math.ceil(grid.querySelectorAll("button").length / COLS);
+          sum += GAP + px(grid, "paddingTop") + px(grid, "paddingBottom") + (rows > 0 ? rows * PITCH - GAP : 0);
+        }
+        if (i > 0) {
+          sum += GAP;
+        }
+      });
+      expect(sum, `slice ${from}-${to}`).toBe(offsets.total);
+      unmount();
+    }
+  });
+
+  it("reports a card index for a screen of collapsed titles only", () => {
+    vi.useFakeTimers();
+    const onWindow = vi.fn<(w: { start: number; count: number }) => void>();
+    const groups: SampleGroup[] = Array.from({ length: 300 }, (_, i) => ({ label: `g${i}`, path: `/w/g${i}`, statuses: ["idle", "idle"], collapsed: i >= 50 && i < 250 }));
+    const full = groupedOf(groups, true).document as MonitorView;
+    const doc: MonitorView = { ...full, cards: { ...full.cards, start: 0, window: full.cards.window.slice(0, 60) } };
+    render(<CardGrid document={doc} now={Date.now()} onSelect={noop} onWindow={onWindow} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} />);
+    // 50 open groups of one row each take 50 * (32 + 140) + 49 gaps; scroll into the middle of the collapsed run.
+    screenSize.top = 50 * 172 + 49 * 12 + 2000;
+    act(() => {
+      fireEvent.scroll(screen.getByRole("region", { name: "Agents" }));
+      vi.advanceTimersByTime(200);
+    });
+    expect(onWindow).toHaveBeenLastCalledWith({ start: 100, count: COLS });
   });
 });

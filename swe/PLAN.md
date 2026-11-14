@@ -45,8 +45,9 @@ I/O lands only in L4 and the app binary; the frontend only draws the view.
 | 010 | `sprints/sprint-010-health-logs` | Stage 2: daemon health panel and live logs | 5 |
 | 011 | `sprints/sprint-011-workspace-grouping` | Workspace (`cwd`) on every card; group-by-workspace grid (default, switchable and persisted), virtualised | 7 |
 | 012 | `sprints/sprint-012-view-zoom` | View menu Zoom In / Out / Actual Size with shortcuts (added on request, 2026-11-14) | 1 |
+| 013 | `sprints/sprint-013-collapse-groups` | Collapse and expand workspace groups, Collapse/Expand All (added on request, 2026-11-14) | 1 |
 
-**Total: 12 sprints, 56 tasks.**
+**Total: 13 sprints, 57 tasks.**
 
 ## Task index
 
@@ -154,6 +155,11 @@ I/O lands only in L4 and the app binary; the frontend only draws the view.
 |------|-------|------|------|-----------|------------------------|
 | task-001 | View zoom: commands, saved setting, native webview zoom, shortcuts | feature | L3/L5/L6/app/frontend | none | features/view-zoom.md · `crates/{config,engine,shell}`, `src-tauri/src/{main,zoom}.rs`, `src/lib/shortcuts.ts` |
 
+### sprints/sprint-013-collapse-groups
+| Task | Title | Type | Area | Depends on | Covers (specs + source) |
+|------|-------|------|------|-----------|------------------------|
+| task-001 | Collapse and expand workspace groups | feature | L5/L6/frontend | sprint-011 | features/agent-workspace-grouping.md § Collapsing groups · `crates/engine/src/view.rs`, `crates/shell/src/{state,fields,menus,control}.rs`, `src/components/{WorkspaceHeader,CardGrid}.tsx`, `src/lib/groupLayout.ts` |
+
 ## Coverage check
 
 | Spec / module | Covered by |
@@ -161,7 +167,7 @@ I/O lands only in L4 and the app binary; the frontend only draws the view.
 | specs/overview.md | 001–010 (structure); 009/task-003 (docs) |
 | specs/features/daemon-connections.md | 004/task-003, 005/task-002…006 |
 | specs/features/agent-monitor.md | 002/task-004, 006/task-001…006; amendments by 011/task-003, 011/task-005, 011/task-006 |
-| specs/features/agent-workspace-grouping.md | 011/task-001…007 |
+| specs/features/agent-workspace-grouping.md | 011/task-001…007, 013/task-001 |
 | specs/features/view-zoom.md | 012/task-001 |
 | specs/features/attention-and-interventions.md | 007/task-001…005 |
 | specs/features/notifications-and-tray.md | 008/task-001…004 |

@@ -92,6 +92,25 @@ pub(crate) fn zoom(v: &Value) -> Result<u16, String> {
         .ok_or_else(|| format!("`zoom` is a whole percent from {ZOOM_MIN} to {ZOOM_MAX}"))
 }
 
+/// Most collapsed groups kept: a view holds at most about this many groups.
+pub(crate) const MAX_COLLAPSED: usize = 5000;
+const MAX_KEY: usize = 1024;
+
+/// `collapsedGroups`: distinct group keys.
+pub(crate) fn collapsed_groups(v: &Value) -> Result<Vec<String>, String> {
+    let bad = || format!("`collapsedGroups` is an array of at most {MAX_COLLAPSED} distinct group keys of 1-{MAX_KEY} characters");
+    let items = v.as_array().filter(|a| a.len() <= MAX_COLLAPSED).ok_or_else(bad)?;
+    let mut out: Vec<String> = Vec::with_capacity(items.len());
+    for item in items {
+        let key = item.as_str().filter(|k| !k.is_empty() && k.len() <= MAX_KEY).ok_or_else(bad)?;
+        if out.iter().any(|k| k == key) {
+            return Err(bad());
+        }
+        out.push(key.to_owned());
+    }
+    Ok(out)
+}
+
 /// Validate and apply one `UiState` field by its wire name. On `Err` the state is unchanged.
 pub(crate) fn apply(ui: &mut UiState, key: &str, v: &Value) -> Result<(), String> {
     match key {
@@ -101,6 +120,7 @@ pub(crate) fn apply(ui: &mut UiState, key: &str, v: &Value) -> Result<(), String
         "attentionRailCollapsed" => ui.attention_rail_collapsed = v.as_bool().ok_or("`attentionRailCollapsed` must be a boolean")?,
         "groupBy" => ui.group_by = group_by(v)?,
         "zoom" => ui.zoom = zoom(v)?,
+        "collapsedGroups" => ui.collapsed_groups = collapsed_groups(v)?,
         "focusItem" if v.is_null() => ui.focus_item = None,
         "focusItem" => return Err("`focusItem` can only be cleared here (null); use `window.focusItem` to set it".into()),
         "gridWindow" => ui.grid_window = grid_window(v)?,

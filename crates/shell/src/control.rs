@@ -7,7 +7,7 @@
 //! - `ui.inspect`: the UI state, the monitor view (`document`) and the menu bar: exactly what the
 //!   frontend draws
 //! - `ui.set {theme?, filterDaemons?, filterStatuses?, attentionRailCollapsed?, focusItem?,
-//!   gridWindow?, dialog?, diagnosticsTarget?, groupBy?, zoom?}`: validate every field, then apply all; an
+//!   gridWindow?, dialog?, diagnosticsTarget?, groupBy?, zoom?, collapsedGroups?}`: validate every field, then apply all; an
 //!   unknown field, a bad value or a read-only field (`toasts`, `status`) is an error naming it
 //!   and nothing changes
 
@@ -71,18 +71,23 @@ fn execute(app: &mut AppShell, params: &Value) -> Result<Value, String> {
     app.run(id, params.get("params").cloned().unwrap_or(Value::Null))
 }
 
-/// Everything the frontend draws, and everything `ui.inspect` returns: what a person sees is
-/// what an agent reads.
-pub fn view(app: &mut AppShell) -> Value {
-    let shell: Vec<Value> = menus::UI_COMMANDS.iter().map(|c| shell_row(app, c)).collect();
-    let inspect = json!({
+/// What the monitor view is built with: the filters, grid window, rail and grouping held in `ui`.
+pub(crate) fn inspect_params(app: &AppShell) -> Value {
+    json!({
         "filterDaemons": app.ui.filter_daemons,
         "filterStatuses": app.ui.filter_statuses,
         "gridWindow": app.ui.grid_window,
         "railCollapsed": app.ui.attention_rail_collapsed,
         "groupBy": app.ui.group_by,
-    });
-    let mut document = app.session.execute("document.inspect", inspect).ok();
+        "collapsedGroups": app.ui.collapsed_groups,
+    })
+}
+
+/// Everything the frontend draws, and everything `ui.inspect` returns: what a person sees is
+/// what an agent reads.
+pub fn view(app: &mut AppShell) -> Value {
+    let shell: Vec<Value> = menus::UI_COMMANDS.iter().map(|c| shell_row(app, c)).collect();
+    let mut document = app.session.execute("document.inspect", inspect_params(app)).ok();
     // The diagnostics of the open panel: `null` when none is open or its daemon is gone.
     if let (Some(doc), Some(target)) = (document.as_mut().and_then(Value::as_object_mut), app.ui.diagnostics_target.clone()) {
         let data = app.session.execute("daemon.diagnostics", json!({"entryId": target})).unwrap_or(Value::Null);

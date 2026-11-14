@@ -85,6 +85,8 @@ export interface SampleGroup {
   daemonName?: string;
   /** Statuses of the group's cards, in order. */
   statuses: Card["status"][];
+  /** Drawn as a title only: its cards are not in the list. */
+  collapsed?: boolean;
 }
 
 /** A grouped view (`groupBy: "workspace"`) of the given groups, laid out the way the shell sends them. */
@@ -96,15 +98,18 @@ export function groupedOf(groups: SampleGroup[], virtualised = false): View {
     const daemonName = g.daemonName ?? "workstation";
     headers.push({
       key: `${serverId.length}:${serverId}${g.path ?? ""}#${gi}`,
+      index: gi,
       serverId,
       daemonName,
       label: g.label,
       path: g.path,
       count: g.statuses.length,
+      shown: g.collapsed ? 0 : g.statuses.length,
+      collapsed: g.collapsed ?? false,
       start: cards.length,
       needsAttention: g.statuses.some((s) => s === "error"),
     });
-    g.statuses.forEach((status, i) => {
+    (g.collapsed ? [] : g.statuses).forEach((status, i) => {
       cards.push(card(`w${gi}-${i}`, `${g.label} agent ${i + 1}`, status, { serverId, daemonName, cwd: g.path, workspaceLabel: g.label }));
     });
   });
@@ -112,7 +117,7 @@ export function groupedOf(groups: SampleGroup[], virtualised = false): View {
     totals: { tokens: 0, cost: 0, covered: 0, of: cards.length, label: `0 of ${cards.length} agents` },
     cards: { total: cards.length, start: 0, virtualised, window: cards },
     groupBy: "workspace",
-    groups: { total: groups.length, window: headers, ...(virtualised ? { layout: groups.map((g) => g.statuses.length) } : {}) },
+    groups: { total: groups.length, window: headers, ...(virtualised ? { layout: groups.map((g) => (g.collapsed ? 0 : g.statuses.length)) } : {}) },
   });
   return { ...base, ui: { ...base.ui, groupBy: "workspace" } };
 }

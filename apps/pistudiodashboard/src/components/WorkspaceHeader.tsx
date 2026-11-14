@@ -1,17 +1,22 @@
 import { clip } from "../lib/format";
 import type { GroupHeader } from "../lib/types";
+import { ChevronIcon } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import styles from "./WorkspaceHeader.module.css";
 
 /**
- * The title of one section of the grouped grid: the workspace label, its full path, the daemon it
- * is on (only when cards from several daemons are shown, since one daemon is already in the
- * status bar), a count and a warning when an agent in it needs the engineer. A landmark, not a
- * button. Everything is plain text from the daemon, clipped here as a second guard.
+ * The title of one section of the grouped grid, and the button that collapses or expands it: the
+ * workspace label, its full path, the daemon it is on (only when cards from several daemons are
+ * shown, since one daemon is already in the status bar), a count and a warning when an agent in it
+ * needs the engineer (so a collapsed group never hides that). Everything is plain text from the
+ * daemon, clipped here as a second guard.
  */
-export function WorkspaceHeader({ group, showDaemon }: { group: GroupHeader; showDaemon: boolean }) {
+export function WorkspaceHeader({ group, showDaemon, onToggle }: { group: GroupHeader; showDaemon: boolean; onToggle: (key: string) => void }) {
   return (
-    <div className={styles.header}>
+    <button type="button" className={styles.header} aria-expanded={!group.collapsed} onClick={() => onToggle(group.key)}>
+      <span className={styles.chevron}>
+        <ChevronIcon open={!group.collapsed} />
+      </span>
       <span className={styles.label} title={group.path ?? group.label}>
         {clip(group.label, 80)}
       </span>
@@ -23,6 +28,6 @@ export function WorkspaceHeader({ group, showDaemon }: { group: GroupHeader; sho
           {group.count}
         </StatusBadge>
       </span>
-    </div>
+    </button>
   );
 }

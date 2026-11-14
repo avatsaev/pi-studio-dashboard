@@ -16,6 +16,7 @@ const defaults: View["ui"] = {
   attentionRailCollapsed: false,
   groupBy: "none",
   zoom: 100,
+  collapsedGroups: [],
   focusItem: null,
   gridWindow: { start: 0, count: 100 },
   dialog: null,

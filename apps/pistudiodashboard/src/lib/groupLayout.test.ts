@@ -108,11 +108,11 @@ describe("planGroups", () => {
         [0, total],
       ] as const) {
         const firstGroup = layout.findIndex((_, i) => sum(layout.slice(0, i + 1)) > start);
-        const headers: { start: number }[] = [];
+        const headers: { index: number; start: number }[] = [];
         let at = 0;
         layout.forEach((count, i) => {
           if (i >= firstGroup && at < end && at + count > start) {
-            headers.push({ start: at });
+            headers.push({ index: i, start: at });
           }
           at += count;
         });
@@ -140,9 +140,9 @@ describe("planGroups", () => {
     const layout = [7];
     const metrics = m(3);
     const o = groupOffsets(layout, metrics);
-    const whole = planGroups([{ start: 0 }], 0, 7, layout, o, metrics);
+    const whole = planGroups([{ index: 0, start: 0 }], 0, 7, layout, o, metrics);
     expect(whole?.groups[0]).toMatchObject({ cardFrom: 0, cardTo: 7, padTop: 0, padBottom: 0 });
-    const cut = planGroups([{ start: 0 }], 0, 5, layout, o, metrics);
+    const cut = planGroups([{ index: 0, start: 0 }], 0, 5, layout, o, metrics);
     expect(cut?.groups[0]).toMatchObject({ cardFrom: 0, cardTo: 3, padBottom: 2 * 140 });
   });
 
@@ -151,16 +151,70 @@ describe("planGroups", () => {
     const metrics = m(3);
     const o = groupOffsets(layout, metrics);
     // The slice starts inside the first group's only row: no whole row of it is present.
-    const plan = planGroups([{ start: 0 }, { start: 3 }], 2, 6, layout, o, metrics);
+    const plan = planGroups([{ index: 0, start: 0 }, { index: 1, start: 3 }], 2, 6, layout, o, metrics);
     expect(plan?.groups[0]).toMatchObject({ cardFrom: 3, cardTo: 3, padTop: 140 - 12, padBottom: 0 });
     expect(plan?.groups[1]).toMatchObject({ cardFrom: 0, cardTo: 3, padTop: 0, padBottom: 0 });
   });
 
   it("rejects headers that do not match the layout", () => {
-    expect(planGroups([{ start: 2 }], 0, 5, [3, 3], groupOffsets([3, 3], m(3)), m(3))).toBeNull();
+    const headers = [{ index: 0, start: 0 }, { index: 2, start: 3 }];
+    expect(planGroups(headers, 0, 6, [3, 3, 3], groupOffsets([3, 3, 3], m(3)), m(3))).toBeNull();
   });
 
   it("an empty header list is one big spacer", () => {
     expect(planGroups([], 0, 0, [3], groupOffsets([3], m(3)), m(3))).toEqual({ padTop: 0, padBottom: 32 + 140, groups: [] });
+  });
+});
+
+describe("collapsed groups (0 cards in the layout)", () => {
+  it("are a title and nothing else", () => {
+    const o = groupOffsets([3, 0, 0, 3], m(3));
+    expect(o.height).toEqual([172, 32, 32, 172]);
+    expect(o.top).toEqual([0, 172 + 12, 172 + 12 + 32 + 12, 172 + 12 + 32 + 12 + 32 + 12]);
+    expect(groupOffsets([0, 0], m(3)).total).toBe(32 + 12 + 32);
+  });
+
+  it("ask for the card index where they sit when only their titles are on screen", () => {
+    const layout = [3, ...Array.from({ length: 100 }, () => 0), 3];
+    const o = groupOffsets(layout, m(3));
+    const middle = (o.top[50] ?? 0) - 10;
+    expect(visibleGroupedRange(middle, 300, layout, o, m(3))).toEqual({ start: 3, count: 3 });
+    // Past everything: the end of the list.
+    expect(visibleGroupedRange(o.total + 500, 300, layout, o, m(3)).start).toBeLessThanOrEqual(6);
+  });
+
+  it("still cover every card when scrolling through a mix", () => {
+    const layout = Array.from({ length: 60 }, (_, i) => (i % 3 === 0 ? 0 : (i % 5) + 1));
+    const total = sum(layout);
+    const metrics = m(3);
+    const o = groupOffsets(layout, metrics);
+    const seen = new Set<number>();
+    for (let y = 0; y <= o.total; y += 29) {
+      const r = visibleGroupedRange(y, 500, layout, o, metrics);
+      for (let i = r.start; i < Math.min(total, r.start + r.count); i += 1) {
+        seen.add(i);
+      }
+    }
+    expect(seen.size).toBe(total);
+  });
+
+  it("plan as header-only groups with no spacers, and the list height still adds up", () => {
+    const layout = [3, 0, 3, 0, 0, 3];
+    const metrics = m(3);
+    const o = groupOffsets(layout, metrics);
+    // The slice is [0, 9): every group is a header.
+    const headers = [
+      { index: 0, start: 0 },
+      { index: 1, start: 3 },
+      { index: 2, start: 3 },
+      { index: 3, start: 6 },
+      { index: 4, start: 6 },
+      { index: 5, start: 6 },
+    ];
+    const plan = planGroups(headers, 0, 9, layout, o, metrics);
+    expect(plan?.groups.filter((g) => g.cardTo === g.cardFrom).map((g) => g.index)).toEqual([1, 3, 4]);
+    expect(plan?.groups.filter((g) => g.cardTo === g.cardFrom).every((g) => g.padTop === 0 && g.padBottom === 0)).toBe(true);
+    const drawn = (plan?.groups ?? []).reduce((acc, g) => acc + 32 + (layout[g.index] ? 12 + 140 - 12 : 0), 0) + 12 * 5;
+    expect((plan?.padTop ?? 0) + drawn + (plan?.padBottom ?? 0)).toBe(o.total);
   });
 });

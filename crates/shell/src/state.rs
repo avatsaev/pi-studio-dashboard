@@ -117,6 +117,9 @@ pub struct UiState {
     pub group_by: GroupBy,
     /// Zoom of the window's content in percent; saved in the config file (`settings.zoom`).
     pub zoom: u16,
+    /// Keys of the workspace groups drawn collapsed (`groups.window[].key` of the view); session
+    /// state, like the filters.
+    pub collapsed_groups: Vec<String>,
     pub focus_item: Option<FocusItem>,
     pub grid_window: GridWindow,
     pub dialog: Option<Dialog>,
@@ -138,6 +141,7 @@ impl Default for UiState {
             attention_rail_collapsed: false,
             group_by: GroupBy::default(),
             zoom: crate::zoom::DEFAULT,
+            collapsed_groups: Vec::new(),
             focus_item: None,
             grid_window: GridWindow::default(),
             dialog: None,

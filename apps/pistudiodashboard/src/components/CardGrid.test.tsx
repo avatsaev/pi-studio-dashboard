@@ -26,7 +26,7 @@ afterEach(() => {
 
 const noop = () => {};
 function grid(document: Parameters<typeof CardGrid>[0]["document"], more: Partial<Parameters<typeof CardGrid>[0]> = {}) {
-  return <CardGrid document={document} now={NOW} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} {...more} />;
+  return <CardGrid document={document} now={NOW} onSelect={noop} onWindow={noop} onClearFilters={noop} onAddDaemon={noop} onToggleGroup={noop} {...more} />;
 }
 
 describe("window maths", () => {

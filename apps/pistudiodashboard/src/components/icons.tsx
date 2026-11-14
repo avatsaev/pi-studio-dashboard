@@ -25,6 +25,15 @@ function Svg({ size = 14, children }: IconProps & { children: React.ReactNode })
   );
 }
 
+/** Points right when collapsed, down when open. */
+export function ChevronIcon({ open, ...props }: IconProps & { open: boolean }) {
+  return (
+    <Svg {...props}>
+      <path d={open ? "M4 6l4 4 4-4" : "M6 4l4 4-4 4"} />
+    </Svg>
+  );
+}
+
 export function CloseIcon(props: IconProps) {
   return (
     <Svg {...props}>

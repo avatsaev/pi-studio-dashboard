@@ -19,7 +19,7 @@ Still a monitor: grouping is a view of what the daemon sent. No workspace/projec
 | W5 | Group order: best card rank in the group (needs-attention → running → error → idle → closed, the `card_order` rank), then daemon config position, then label ascending, then full path ascending. Inside a group: the existing `card_order` sort. `lastActivity` does **not** order groups, so section headers do not jump around while agents stream. |
 | W6 | The workspace is always visible on the card, grouped or not (flat mode shows it in the card meta line; grouped mode omits it there because the header says it). |
 | W7 | Filters (daemon, status) apply first; empty groups are not shown; header counts are the filtered counts. The attention rail is unaffected (as for filters today). |
-| W8 | No per-group collapse in this spec (deferred; see *Out of scope*). |
+| W8 | **Collapsing** (added 2026-11-14, see *Collapsing groups*): each group header is a button that collapses or expands its group; View menu has Collapse All / Expand All. Collapse state is session state (`UiState.collapsedGroups`), not saved. |
 | W9 | Virtualisation stays: above 100 cards the view is windowed, and group layout is carried so the frontend can place headers and windows exactly. |
 
 ## Public contract
@@ -133,7 +133,7 @@ Grouped mode keeps `MAX_WINDOW` (≈200 cards per emit) and `OVERSCAN`; a header
 - `groupBy == workspace`: each group renders as `<section aria-label=label>` with a header row (workspace label, muted full path, daemon name when more than one daemon contributes cards, count badge, warning badge if `needsAttention`) followed by its own card grid using the same column metrics as today. A group always starts on a new row; the last row of a group may be partial. Cards omit the workspace line.
 - Virtualised grouped layout: the frontend knows every group's count (`layout`), the column count and two fixed heights (card row = `--pi-card-height` + gap, header = new token `--pi-group-header-height`), so it computes each group's offset by prefix sum, draws spacers before/after the sent slice, and reports the visible **card index** range through `view.setGridWindow` as today (the shell never learns column counts).
 - Switching mode resets scroll to the top and sends a fresh window.
-- Header is not a button in v1 (no collapse, W8); it is a landmark only.
+- Header is a button (`aria-expanded`) that collapses or expands the group, W8.
 
 ## Data & persistence touchpoints
 - Reads `AgentEntry.cwd` (set from `list_agents_response`, capped 512 bytes in the protocol crate, trimmed/normalised only at derivation, never mutated in the model). `agent_update` carries no `cwd` (shipped fixtures `agent_update*.json`: status, labels, title, model), so an agent's workspace is stable for its lifetime; a reconnect rebuild replaces it. [TODO(verify): confirm daemons never move an agent to another cwd.]
@@ -167,6 +167,15 @@ Grouped mode keeps `MAX_WINDOW` (≈200 cards per emit) and `OVERSCAN`; a header
 - [config-and-secrets.md](../architecture/config-and-secrets.md) — `settings` schema, lenient load, debounced save.
 - [design-system.md](../architecture/design-system.md) — tokens (`--pi-group-header-height`), snapshot checks in both themes.
 
+## Collapsing groups (W8)
+| Item | Contract |
+|---|---|
+| State | `UiState.collapsedGroups: string[]` of group keys (`groups.window[].key`), at most 5,000, distinct, 1–1024 characters; `ui.set {collapsedGroups}` validates the same. Keys of groups that no longer exist are harmless; `Collapse All` replaces the set with the current groups' keys. |
+| Commands | `view.toggleGroup {key}` (no menu), `view.collapseAllGroups`, `view.expandAllGroups` (View menu). All disabled with "the agents are not grouped by workspace" when `groupBy` is `none`; Expand All also with "no group is collapsed". |
+| `document.inspect` | takes `collapsedGroups` (keys) and `includeGroupKeys` (adds `groups.keys`, what Collapse All reads). A collapsed group's cards are **not** in `cards.window` / `cards.total` (so virtualisation follows what is drawn); totals and status chips are unchanged. |
+| Header | gains `index` (position among all groups), `shown` (cards in the list: `count`, or 0 when collapsed) and `collapsed`; `count` stays the real number of agents. `layout[i]` is `shown`. A group with `shown: 0` belongs to a card slice `[start, end]` when its `start` (the list index where it sits; a run of collapsed groups shares one) is inside it. |
+| Frontend | a collapsed group is a title only (32 px, no card grid); its count and "needs attention" badge stay, so a collapsed group never hides an agent that needs the engineer. With every group collapsed the titles are shown, not the empty state. The scroll maths asks the shell for the card index where a screen of collapsed titles sits. |
+
 ## Acceptance criteria
 - [ ] Given agents with different `cwd`s, when `groupBy` is `none`, then each card shows its workspace label (full path on hover) and the grid and order are exactly as before. (W2, W6)
 - [ ] Given agents in `/work/a/app`, `/work/b/app` and no cwd, when `view.setGroupBy {groupBy:"workspace"}` runs, then the grid shows three sections labelled `a/app`, `b/app` and `No workspace` (last), each with its own count, and cards do not repeat the workspace line. (W1, W4, W6)
@@ -183,7 +192,7 @@ Grouped mode keeps `MAX_WINDOW` (≈200 cards per emit) and `OVERSCAN`; a header
 - [ ] `cargo xtask ci` is green, including the wasm and layers steps (no new dependency, no filesystem access).
 
 ## Out of scope / deferred
-- Per-group collapse/expand and remembering it (W8) — natural follow-up if many workspaces make the page long.
+- Remembering the collapsed groups across restarts (they are session state, like the filters).
 - Grouping by something other than `cwd` (daemon, model, label); `groupBy` is an enum so it can grow.
 - Resolving worktrees to their main repository, git branch/status per workspace, workspace-level actions (git/worktrees remain out of scope).
 - Showing workspace in the notification text (notification content stays content-free, D9).

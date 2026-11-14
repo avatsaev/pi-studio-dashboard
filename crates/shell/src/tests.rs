@@ -31,7 +31,7 @@ fn the_view_is_the_ui_state_the_monitor_and_the_generated_menu_bar() {
     assert_eq!(
         view["ui"],
         json!({
-            "theme": "dark", "filterDaemons": [], "filterStatuses": [], "attentionRailCollapsed": false, "groupBy": "workspace", "zoom": 100, "focusItem": null,
+            "theme": "dark", "filterDaemons": [], "filterStatuses": [], "attentionRailCollapsed": false, "groupBy": "workspace", "zoom": 100, "collapsedGroups": [], "focusItem": null,
             "gridWindow": {"start": 0, "count": 100}, "dialog": null, "diagnosticsTarget": null, "toasts": [], "status": ""
         })
     );
@@ -209,6 +209,9 @@ fn engine_commands_lists_the_shell_commands_with_unique_ids() {
             "view.setTheme",
             "view.filterDaemons",
             "view.setGroupBy",
+            "view.toggleGroup",
+            "view.collapseAllGroups",
+            "view.expandAllGroups",
             "view.zoomIn",
             "view.zoomOut",
             "view.zoomReset",
@@ -538,5 +541,103 @@ mod zoom {
         app.session.apply_loaded_config(LoadedConfig { config, issues: Vec::new(), read_only: false });
         app.adopt_settings();
         assert_eq!(app.ui.zoom, 150);
+    }
+}
+
+mod collapse {
+    use super::*;
+
+    fn grouped_app() -> AppShell {
+        let mut m = MonitorState::default();
+        let mut d = DaemonSlice::new("e1", "box");
+        d.server_id = Some("srv".into());
+        m.daemons.push(d);
+        for (id, cwd) in [("a1", "/w/a"), ("a2", "/w/a"), ("b1", "/w/b"), ("c1", "/w/c")] {
+            m.upsert_agent(AgentEntry {
+                server_id: "srv".into(),
+                agent_id: id.into(),
+                cwd: Some(cwd.into()),
+                status: AgentStatus::Idle,
+                ..AgentEntry::default()
+            });
+        }
+        AppShell::new(Session::with_monitor(m), Services::default())
+    }
+
+    fn groups(app: &mut AppShell) -> Vec<(String, bool, u64)> {
+        let view = control::view(app);
+        view["document"]["groups"]["window"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|g| (g["label"].as_str().unwrap().to_owned(), g["collapsed"].as_bool().unwrap(), g["count"].as_u64().unwrap()))
+            .collect()
+    }
+
+    fn key(app: &mut AppShell, label: &str) -> String {
+        let view = control::view(app);
+        view["document"]["groups"]["window"].as_array().unwrap().iter().find(|g| g["label"] == label).unwrap()["key"].as_str().unwrap().to_owned()
+    }
+
+    #[test]
+    fn toggling_a_group_collapses_and_expands_it_and_the_view_follows() {
+        let mut app = grouped_app();
+        let b = key(&mut app, "b");
+        app.run("view.toggleGroup", json!({"key": b})).unwrap();
+        assert_eq!(app.ui.collapsed_groups, std::slice::from_ref(&b));
+        assert_eq!(groups(&mut app), [("a".into(), false, 2), ("b".into(), true, 1), ("c".into(), false, 1)]);
+        assert_eq!(control::view(&mut app)["document"]["cards"]["total"], 3);
+        app.run("view.toggleGroup", json!({"key": b})).unwrap();
+        assert!(app.ui.collapsed_groups.is_empty());
+        assert_eq!(control::view(&mut app)["document"]["cards"]["total"], 4);
+    }
+
+    #[test]
+    fn collapse_all_and_expand_all_cover_the_filtered_groups() {
+        let mut app = grouped_app();
+        app.run("view.collapseAllGroups", json!({})).unwrap();
+        assert_eq!(app.ui.collapsed_groups.len(), 3);
+        let view = control::view(&mut app);
+        assert_eq!((view["document"]["cards"]["total"].clone(), view["document"]["groups"]["total"].clone()), (json!(0), json!(3)));
+        app.run("view.expandAllGroups", json!({})).unwrap();
+        assert!(app.ui.collapsed_groups.is_empty());
+        assert_eq!(control::view(&mut app)["document"]["cards"]["total"], 4);
+    }
+
+    #[test]
+    fn the_commands_say_why_they_cannot_run() {
+        let mut app = grouped_app();
+        assert_eq!(menu_item(&mut app, "view.expandAllGroups")["reason"], "no group is collapsed");
+        assert_eq!(menu_item(&mut app, "view.collapseAllGroups")["enabled"], true);
+        app.run("view.setGroupBy", json!({"groupBy": "none"})).unwrap();
+        for id in ["view.collapseAllGroups", "view.expandAllGroups"] {
+            assert_eq!(menu_item(&mut app, id)["reason"], "the agents are not grouped by workspace", "{id}");
+        }
+        assert!(app.run("view.toggleGroup", json!({"key": "x"})).is_err());
+    }
+
+    #[test]
+    fn a_bad_key_or_ui_set_value_is_refused_and_changes_nothing() {
+        let mut app = grouped_app();
+        assert!(app.run("view.toggleGroup", json!({})).is_err());
+        assert!(app.run("view.toggleGroup", json!({"key": 3})).is_err());
+        for bad in [json!("x"), json!([1]), json!([""]), json!(["a", "a"]), json!(["k".repeat(1025)]), json!(null)] {
+            let reply = control::handle(&mut app, "ui.set", &json!({"collapsedGroups": bad}));
+            assert!(reply["error"].as_str().is_some_and(|e| e.contains("collapsedGroups")), "{reply}");
+        }
+        assert!(app.ui.collapsed_groups.is_empty());
+        assert_eq!(control::handle(&mut app, "ui.set", &json!({"collapsedGroups": ["a", "b"]}))["ok"], true);
+        assert_eq!(app.ui.collapsed_groups, ["a", "b"]);
+    }
+
+    #[test]
+    fn the_collapsed_set_is_bounded() {
+        let mut app = grouped_app();
+        let many: Vec<String> = (0..5001).map(|i| format!("k{i}")).collect();
+        assert!(control::handle(&mut app, "ui.set", &json!({"collapsedGroups": many}))["error"].is_string());
+        let ok: Vec<String> = (0..5000).map(|i| format!("k{i}")).collect();
+        assert_eq!(control::handle(&mut app, "ui.set", &json!({"collapsedGroups": ok}))["ok"], true);
+        assert!(app.run("view.toggleGroup", json!({"key": "one-more"})).is_err(), "the 5001st is refused");
+        assert_eq!(app.ui.collapsed_groups.len(), 5000);
     }
 }

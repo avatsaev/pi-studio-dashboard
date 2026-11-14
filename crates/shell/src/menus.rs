@@ -94,6 +94,11 @@ fn set_field(app: &mut AppShell, p: &Value, param: &str, field: &str) -> Result<
     fields::apply(&mut app.ui, field, v)
 }
 
+/// The group commands only mean something while the grid is grouped.
+fn grouped(app: &AppShell) -> Result<(), String> {
+    if app.ui.group_by == pistudiodashboard_engine::GroupBy::Workspace { Ok(()) } else { Err("the agents are not grouped by workspace".to_owned()) }
+}
+
 fn no_check(_: &AppShell, _: Option<&str>) -> Option<bool> {
     None
 }
@@ -142,6 +147,66 @@ pub const UI_COMMANDS: &[ShellCommand] = &[
         bind_key: "groupBy",
         bound: &[Bound { value: "none", label: "Group: None" }, Bound { value: "workspace", label: "Group: By Workspace" }],
         checked: |app, value| value.map(|v| v == app.ui.group_by.name()),
+    },
+    ShellCommand {
+        id: "view.toggleGroup",
+        label: "Collapse or Expand Group",
+        menu: None,
+        shortcut: None,
+        params: r#"{"key": string /* a `groups.window[].key` of the view */}"#,
+        enabled: grouped,
+        run: |app, p| {
+            let key = p.get("key").and_then(Value::as_str).filter(|k| !k.is_empty()).ok_or("`key` is a group key (a string)")?;
+            let mut next = app.ui.collapsed_groups.clone();
+            match next.iter().position(|k| k == key) {
+                Some(at) => {
+                    next.remove(at);
+                }
+                None => next.push(key.to_owned()),
+            }
+            app.ui.collapsed_groups = fields::collapsed_groups(&json!(next))?;
+            Ok(())
+        },
+        bind_key: "",
+        bound: &[],
+        checked: no_check,
+    },
+    ShellCommand {
+        id: "view.collapseAllGroups",
+        label: "Collapse All Groups",
+        menu: Some("View"),
+        shortcut: None,
+        params: "{}",
+        enabled: grouped,
+        run: |app, _| {
+            let mut params = crate::control::inspect_params(app);
+            params["includeGroupKeys"] = json!(true);
+            let view = app.session.execute("document.inspect", params).map_err(|e| e.to_string())?;
+            let keys = view.pointer("/groups/keys").cloned().ok_or("there are no groups to collapse")?;
+            app.ui.collapsed_groups = fields::collapsed_groups(&keys).map_err(|_| "too many groups to collapse them all".to_owned())?;
+            Ok(())
+        },
+        bind_key: "",
+        bound: &[],
+        checked: no_check,
+    },
+    ShellCommand {
+        id: "view.expandAllGroups",
+        label: "Expand All Groups",
+        menu: Some("View"),
+        shortcut: None,
+        params: "{}",
+        enabled: |app| {
+            grouped(app)?;
+            if app.ui.collapsed_groups.is_empty() { Err("no group is collapsed".to_owned()) } else { Ok(()) }
+        },
+        run: |app, _| {
+            app.ui.collapsed_groups.clear();
+            Ok(())
+        },
+        bind_key: "",
+        bound: &[],
+        checked: no_check,
     },
     ShellCommand {
         id: "view.zoomIn",
