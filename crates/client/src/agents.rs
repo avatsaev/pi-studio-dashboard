@@ -10,8 +10,8 @@ use std::collections::VecDeque;
 use futures_util::SinkExt;
 use pistudiodashboard_model::{ContextUsage, DaemonEventKind, StatsResult, TokenUsage};
 use pistudiodashboard_protocol::{
-    AgentArchived, AgentDeleted, AgentStatus, AgentStatusMsg, AgentStream, AgentUpdate, OutboundRequest, StatsResponse, StreamEvent, TimelineDirection,
-    TimelinePage, TimelineReset, encode,
+    AgentArchived, AgentDeleted, AgentStatus, AgentStatusMsg, AgentStream, AgentUpdate, ListAgentsResponse, OutboundRequest, StatsResponse, StreamEvent,
+    TimelineDirection, TimelinePage, TimelineReset, encode,
 };
 use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message;
@@ -19,6 +19,7 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::conn::{Task, Ws};
 use crate::requests::{Kind, timeout_for};
 use crate::state::{ConnError, ConnErrorKind};
+use crate::sync::agent_item;
 
 /// Stats requests in flight per daemon.
 pub(crate) const MAX_STATS_IN_FLIGHT: usize = 4;
@@ -174,6 +175,23 @@ impl Task {
             StatsResult::NoSession
         };
         self.out.push(DaemonEventKind::Stats { agent_id: agent_id.to_owned(), result });
+    }
+
+    /// A post-sync `list_agents_response` arrived (or the request failed; nothing is retried, the
+    /// next new agent asks again). A malformed answer is counted and dropped.
+    pub(crate) fn finish_agent_list(&mut self, message: Option<&Value>) {
+        let Some(m) = message.filter(|m| m.get("type").and_then(Value::as_str) == Some("list_agents_response")) else { return };
+        let Some(list) = ListAgentsResponse::from_message(m) else {
+            self.counters.malformed();
+            return;
+        };
+        for _ in 0..list.malformed {
+            self.counters.malformed();
+        }
+        for _ in 0..list.unknown_status {
+            self.counters.unknown_enum_value();
+        }
+        self.out.push(DaemonEventKind::AgentsListed { agents: list.agents.iter().map(agent_item).collect() });
     }
 
     /// A timeline page arrived (or the request failed). A page of a cancelled load is dropped.

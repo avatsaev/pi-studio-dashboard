@@ -42,6 +42,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::Toast { .. } => "toast",
         Effect::CloseDrill { .. } => "closeDrill",
         Effect::FetchStats { .. } => "fetchStats",
+        Effect::FetchAgents { .. } => "fetchAgents",
         Effect::FetchTimeline { .. } => "fetchTimeline",
     }
 }
@@ -85,6 +86,7 @@ impl Session {
             }
             Effect::CloseDrill { reason } => self.close_drill(reason),
             Effect::FetchStats { server_id, agent_id } => self.send(&server_id, OutboundRequest::SessionStats { agent_id }),
+            Effect::FetchAgents { server_id } => self.send(&server_id, OutboundRequest::ListAgents),
             Effect::FetchTimeline { server_id, agent_id } => self.send(&server_id, OutboundRequest::FetchTimeline { agent_id }),
             Effect::Notify { kind, server_id, item_id } => self.notify(NotifyAction::Raise, Some(kind), server_id, item_id),
             Effect::ResolveNotification { server_id, item_id } => self.notify(NotifyAction::Resolve, None, server_id, item_id),
@@ -190,6 +192,28 @@ mod tests {
         assert_eq!(r["skipped"], json!([]));
         assert!(held.agents.is_empty() && s.snapshot().agents.len() == 1, "readers keep the old state");
         assert_eq!(*log.borrow(), [("srv".to_owned(), OutboundRequest::SessionStats { agent_id: "a1".into() })]);
+    }
+
+    #[test]
+    fn an_agent_created_after_the_snapshot_asks_the_daemon_for_its_workspace() {
+        let (mut s, log) = recording(Ok(()));
+        s.execute("feed.ingest", hello_and_snapshot()).unwrap();
+        log.borrow_mut().clear();
+        let new = json!({"events": [{"entryId": "e1", "connEpoch": 1, "seq": 2, "at": 20,
+            "kind": {"type": "agentUpdate", "agentId": "new", "status": "initializing"}}]});
+        let r = s.execute("feed.ingest", new).unwrap();
+        assert_eq!(r["effects"], json!(["fetchStats", "fetchAgents"]));
+        assert_eq!(
+            *log.borrow(),
+            [("srv".to_owned(), OutboundRequest::SessionStats { agent_id: "new".into() }), ("srv".to_owned(), OutboundRequest::ListAgents)]
+        );
+        let listed = json!({"events": [{"entryId": "e1", "connEpoch": 1, "seq": 3, "at": 21,
+            "kind": {"type": "agentsListed", "agents": [{"agentId": "new", "status": "idle", "cwd": "/work/app/"}]}}]});
+        s.execute("feed.ingest", listed).unwrap();
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace"})).unwrap();
+        let labels: Vec<&str> = v["groups"]["window"].as_array().unwrap().iter().map(|g| g["label"].as_str().unwrap()).collect();
+        assert!(labels.contains(&"app") && labels.contains(&"No workspace"), "{labels:?}: `new` joins `app`, `a1` (never given a cwd) stays out");
+        assert_eq!(v["cards"]["window"].as_array().unwrap().iter().find(|c| c["agentId"] == "new").unwrap()["cwd"], "/work/app");
     }
 
     #[test]

@@ -158,6 +158,8 @@ pub(crate) enum Kind {
     },
     /// A sync-on-connect request, consumed by the connection task itself.
     Sync(SyncKind),
+    /// A `ListAgents` sent by the engine after the connect-time sync (the answer becomes an `AgentsListed` event).
+    AgentList,
     /// A `SessionStats` request (executor side; the answer becomes a `Stats` event).
     Stats {
         agent_id: String,
@@ -180,6 +182,7 @@ impl Kind {
         match request {
             OutboundRequest::RespondUi { .. } => Self::Mutation { op: MutationOp::RespondUi, token },
             OutboundRequest::InterruptAgent { .. } => Self::Mutation { op: MutationOp::InterruptAgent, token },
+            OutboundRequest::ListAgents => Self::AgentList,
             _ => Self::Read,
         }
     }

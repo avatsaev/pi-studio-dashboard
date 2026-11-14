@@ -239,6 +239,11 @@ pub enum DaemonEventKind {
         agent_id: String,
         result: StatsResult,
     },
+    /// A later `list_agents_response` (not the connect-time snapshot): fills the fields that
+    /// pushes never carry into agents already known; agents it does not know are ignored.
+    AgentsListed {
+        agents: Vec<AgentListItem>,
+    },
     /// One page of a timeline load: `reset` replaces the drill buffer, later pages append.
     Timeline {
         agent_id: String,

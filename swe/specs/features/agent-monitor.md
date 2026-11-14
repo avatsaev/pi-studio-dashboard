@@ -37,6 +37,7 @@ Card = { serverId, agentId, daemonName, title, model?, status, dot: DotKind, dim
          selected: bool }
 ```
 `DotKind` = `queued|idle|running|waiting|finished|error` as in pi-studio's status dot vocabulary.
+`title` is the daemon's title, or `New chat` (pi-studio's name for an untitled conversation) when it has none; never the agent id.
 
 ### Card fields (D6)
 Status dot (pi-studio colours via `--pi-*` tokens), title, daemon name, model, current tool call, last output line, tokens/cost. Optional small badges: pending-request count, "stale" label (D25), "unencrypted" is a daemon-level badge in the chip (D32), not on the card.

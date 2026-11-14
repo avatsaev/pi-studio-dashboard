@@ -132,6 +132,63 @@ fn an_unknown_agent_gets_a_placeholder_and_stats_while_unknown_streams_are_ignor
     assert_eq!(s.dropped_events, before + 1);
 }
 
+fn listed(items: Vec<pistudiodashboard_model::AgentListItem>) -> DaemonEvent {
+    kind(DaemonEventKind::AgentsListed { agents: items })
+}
+
+fn listed_item(id: &str) -> pistudiodashboard_model::AgentListItem {
+    pistudiodashboard_model::AgentListItem { agent_id: id.into(), status: "idle".into(), ..Default::default() }
+}
+
+#[test]
+fn a_new_agent_asks_for_the_list_once_and_the_answer_gives_it_its_workspace() {
+    // Regression: `agent_update` has no `cwd`, so an agent created after the connect-time snapshot
+    // stayed in "No workspace" for good.
+    let mut s = live_state(&[]);
+    let fx = run(&mut s, &[update("new", Some("initializing"))], 10);
+    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::FetchAgents { .. })).count(), 1);
+    assert!(fx.contains(&Effect::FetchAgents { server_id: "srv".into() }));
+    assert_eq!(agent(&s, "new").cwd, None);
+    let fx = run(&mut s, &[update("new", Some("running"))], 20);
+    assert!(!fx.iter().any(|e| matches!(e, Effect::FetchAgents { .. })), "a known agent does not trigger another list");
+
+    let item = pistudiodashboard_model::AgentListItem {
+        cwd: Some("/work/app".into()),
+        provider: Some("pi".into()),
+        title: Some("from list".into()),
+        ..listed_item("new")
+    };
+    run(&mut s, &[listed(vec![item])], 30);
+    let a = agent(&s, "new");
+    assert_eq!((a.cwd.as_deref(), a.provider.as_deref(), a.status), (Some("/work/app"), Some("pi"), AgentStatus::Running), "status stays what the pushes said");
+    assert_eq!(a.title.as_deref(), Some("from list"), "no title was known");
+}
+
+#[test]
+fn a_list_never_resurrects_unknown_agents_nor_overwrites_newer_titles() {
+    let mut s = live_state(&[(A1, "idle")]);
+    run(
+        &mut s,
+        &[kind(DaemonEventKind::AgentUpdate {
+            agent_id: A1.into(),
+            status: None,
+            title: Some(Some("pushed".into())),
+            labels: None,
+            model: None,
+            model_provider: None,
+        })],
+        5,
+    );
+    let items = vec![
+        pistudiodashboard_model::AgentListItem { title: Some("stale".into()), cwd: Some("/w".into()), ..listed_item(A1) },
+        pistudiodashboard_model::AgentListItem { cwd: Some("/gone".into()), ..listed_item("deleted") },
+    ];
+    run(&mut s, &[listed(items)], 6);
+    assert_eq!((agent(&s, A1).title.as_deref(), agent(&s, A1).cwd.as_deref()), (Some("pushed"), Some("/w")));
+    assert!(s.agent("srv", "deleted").is_none());
+    assert!(s.validate().is_ok());
+}
+
 fn dialog_snapshot(agents: &[&str]) -> DaemonEvent {
     let items = agents.iter().map(|a| common::item(a, "running")).collect();
     snapshot("e1", 1, items, vec![common::pending("r1", "a1"), common::pending("r2", "a2")])

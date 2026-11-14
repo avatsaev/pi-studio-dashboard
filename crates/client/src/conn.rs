@@ -475,6 +475,10 @@ impl Task {
                 self.out.push(DaemonEventKind::RequestResult { token, op, result });
             }
             Kind::Stats { agent_id } => self.finish_stats(&agent_id, message),
+            Kind::AgentList => {
+                self.shared.finished();
+                self.finish_agent_list(message);
+            }
             Kind::Timeline { job, first } => {
                 if first {
                     self.shared.finished();

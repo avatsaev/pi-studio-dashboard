@@ -105,6 +105,7 @@ pub fn apply_in_place(state: &mut MonitorState, event: &DaemonEvent, now: i64, e
         DaemonEventKind::AgentStream { agent_id, seq, event: stream_event, .. } => reduce_agent::stream(state, ctx, agent_id, *seq, stream_event, effects),
         DaemonEventKind::TimelineReset { agent_id, .. } => drill::timeline_reset(state, ctx, agent_id, effects),
         DaemonEventKind::Stats { agent_id, result } => reduce_stats::stats(state, ctx, agent_id, result),
+        DaemonEventKind::AgentsListed { agents } => reduce_agent::listed(state, ctx, agents),
         DaemonEventKind::Timeline { agent_id, items, reset, seq_end } => drill::timeline(state, ctx, agent_id, items, *reset, *seq_end),
     }
 }

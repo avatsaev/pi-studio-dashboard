@@ -88,7 +88,7 @@ pub(crate) struct Synced {
 }
 
 /// `key=value` per label (the model keeps flat strings).
-fn agent_item(a: &ListedAgent) -> AgentListItem {
+pub(crate) fn agent_item(a: &ListedAgent) -> AgentListItem {
     AgentListItem {
         agent_id: a.agent_id.clone(),
         status: a.status.as_wire().to_owned(),

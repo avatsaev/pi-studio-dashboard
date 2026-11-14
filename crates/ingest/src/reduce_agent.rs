@@ -1,7 +1,8 @@
 //! Agent reducers: update, status, archived, deleted and stream events.
 
 use pistudiodashboard_model::{
-    AgentEntry, AgentStatus, Attention, Effect, EventKind, EventRecord, LABEL, MonitorState, NotifyKind, SUMMARY_TITLE, StreamEvent, agent_key, cap_string,
+    AgentEntry, AgentListItem, AgentStatus, Attention, Effect, EventKind, EventRecord, LABEL, MonitorState, NotifyKind, SUMMARY_TITLE, StreamEvent, agent_key,
+    cap_string,
 };
 
 use crate::activity::update_activity;
@@ -57,6 +58,8 @@ pub(crate) fn update(state: &mut MonitorState, ctx: Ctx, agent_id: &str, patch: 
             },
         );
         effects.push(Effect::FetchStats { server_id: sid.clone(), agent_id: agent_id.to_owned() });
+        // A push never says where the agent lives; only the list does (the card would stay in "No workspace").
+        effects.push(Effect::FetchAgents { server_id: sid.clone() });
     }
     let Some(entry) = state.agents.get_mut(&key) else { return };
     let (old_status, old_title) = (entry.status, entry.title.clone());
@@ -87,6 +90,31 @@ pub(crate) fn update(state: &mut MonitorState, ctx: Ctx, agent_id: &str, patch: 
         effects.push(fail_notification(&sid, agent_id));
     } else if old_status == AgentStatus::Error && new_status != AgentStatus::Error {
         entry.attention.errored = false;
+    }
+}
+
+/// `AgentsListed`: fill what pushes never carry (`cwd`, provider) into agents already known, and
+/// title/model only where nothing is known yet (a push since the list was built is newer). An
+/// agent the state does not know is ignored: the list must not resurrect a deleted or archived one.
+pub(crate) fn listed(state: &mut MonitorState, ctx: Ctx, items: &[AgentListItem]) {
+    let Some(sid) = owner(state, ctx) else { return };
+    for item in items {
+        let Some(entry) = state.agents.get_mut(&agent_key(&sid, &item.agent_id)) else { continue };
+        if item.cwd.is_some() {
+            entry.cwd.clone_from(&item.cwd);
+        }
+        if item.provider.is_some() {
+            entry.provider.clone_from(&item.provider);
+        }
+        if entry.title.is_none() {
+            entry.title = item.title.as_deref().map(|t| cap_string(t, SUMMARY_TITLE));
+        }
+        if entry.model.is_none() {
+            entry.model = item.model.as_deref().map(|m| cap_string(m, LABEL));
+        }
+        if entry.last_activity.is_none() {
+            entry.last_activity = item.last_activity;
+        }
     }
 }
 

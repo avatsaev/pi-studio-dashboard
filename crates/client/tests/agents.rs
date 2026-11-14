@@ -198,6 +198,27 @@ async fn stats_are_deduplicated_per_agent_limited_to_four_in_flight_and_answered
     wait_until(|| stats_requests(&daemon).len() == 11).await;
 }
 
+fn list_requests(daemon: &FakeDaemon) -> Vec<Value> {
+    daemon.received().into_iter().filter(|f| inner_type(f) == "list_agents_request").collect()
+}
+
+#[tokio::test]
+async fn a_list_request_after_the_sync_is_answered_as_an_agents_listed_event() {
+    let daemon = FakeDaemon::start(Behavior::default()).await;
+    let (client, mut rx) = live(&daemon).await;
+    client.request("e1", OutboundRequest::ListAgents, "").unwrap();
+    wait_until(|| list_requests(&daemon).len() == 2).await; // the connect-time sync sent the first
+    let id = list_requests(&daemon)[1]["message"]["requestId"].clone();
+    daemon.push(session(json!({"type": "list_agents_response", "requestId": id, "agents": [
+        {"agentId": "a1", "status": "idle", "cwd": "/work/app", "provider": "pi", "labels": {}},
+        "junk",
+    ]})));
+    let events = collect_until(&mut rx, |e| matches!(e.kind, DaemonEventKind::AgentsListed { .. })).await;
+    let DaemonEventKind::AgentsListed { agents } = &events.last().unwrap().kind else { panic!("{:?}", events.last()) };
+    assert_eq!((agents.len(), agents[0].agent_id.as_str(), agents[0].cwd.as_deref()), (1, "a1", Some("/work/app")));
+    drop(client);
+}
+
 #[tokio::test]
 async fn five_hundred_stats_requests_never_exceed_four_in_flight() {
     let daemon = FakeDaemon::start(Behavior::default()).await;

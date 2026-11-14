@@ -41,6 +41,12 @@ pub enum Effect {
         server_id: String,
         agent_id: String,
     },
+    /// Ask the daemon for its agent list. `agent_update` carries no `cwd`, provider or model, so an
+    /// agent first seen through a push (created after the connect-time snapshot) is a placeholder
+    /// until the answer (`AgentsListed`) fills it in.
+    FetchAgents {
+        server_id: String,
+    },
     /// One logical (re)load; the client does the paging (D39).
     FetchTimeline {
         server_id: String,

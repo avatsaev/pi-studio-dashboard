@@ -22,6 +22,9 @@ const VIRTUALISE_ABOVE: usize = 100;
 /// Cards carried beyond each edge of the reported window, and the most one view carries.
 const OVERSCAN: usize = 20;
 const MAX_WINDOW: usize = 200;
+/// The title of an agent the daemon has none for: what pi-studio's web UI calls an untitled
+/// conversation. The agent id is a UUID and means nothing to a reader.
+const UNTITLED: &str = "New chat";
 
 /// Chip order and wire names of the status buckets.
 const BUCKETS: [(AgentStatus, &str); 6] = [
@@ -141,7 +144,7 @@ fn card(m: &MonitorState, names: &Names<'_>, labels: &Labels, a: &AgentEntry) ->
         "serverId": a.server_id,
         "agentId": a.agent_id,
         "daemonName": names.get(&a.server_id),
-        "title": a.title.as_deref().unwrap_or(&a.agent_id),
+        "title": a.title.as_deref().unwrap_or(UNTITLED),
         "model": a.model,
         "cwd": workspace,
         "workspaceLabel": label_of(labels, workspace.as_deref()),
@@ -633,6 +636,13 @@ mod tests {
         assert_eq!(v["cards"]["window"][0]["workspaceLabel"], "b/app", "a card's label is its header's");
         let flat = s.execute("document.inspect", json!({})).unwrap();
         assert_eq!((&flat["totals"], &flat["statusChips"]), (&v["totals"], &v["statusChips"]), "grouping changes neither totals nor chips");
+    #[test]
+    fn an_untitled_agent_reads_new_chat_not_its_id() {
+        let mut s = with_cwds(&[("0b5300b6-8761-46d6-8353-bea1", Some("/w"), AgentStatus::Idle)]);
+        let v = s.execute("document.inspect", json!({})).unwrap();
+        assert_eq!(v["cards"]["window"][0]["title"], "New chat");
+    }
+
     }
 
     #[test]

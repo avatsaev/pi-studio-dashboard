@@ -237,6 +237,7 @@ Ingest returns **effects** alongside the new state; the owner thread executes th
 | `Toast {kind, text}` | append to `UiState.toasts` ("answered elsewhere: …", D27) |
 | `CloseDrill {reason}` | clear `drilldown.target`, toast the reason (archived/deleted, D27) |
 | `FetchStats {serverId, agentId}` | `send_to_daemon(SessionStats)` read request; triggers: `Snapshot`, turn end, new agent, and the owner loop's 10 s `stats_tick` for running agents — the engine is the only scheduler, the client dedupes (D16, D39) |
+| `FetchAgents {serverId}` | `send_to_daemon(ListAgents)` read request; trigger: an agent first seen through a push (`agent_update` carries no `cwd`/provider, so without it the card stays in "No workspace"). The answer arrives as `AgentsListed`, which fills `cwd`, provider and (when unset) title/model/lastActivity of agents already known and ignores unknown ones |
 | `FetchTimeline {serverId, agentId}` | `send_to_daemon(FetchTimeline)` — one logical (re)load on select, `agent_timeline_reset` or reconnect; the client pages `before` then `after` while `hasNewer` (D17, D27, D39) |
 
 - When the channel is full the client coalesces: it drops only superseded `agent_stream` text/tool deltas for non-selected agents (their summaries are derived values) and **never** drops state-bearing events (agent status, `agent_ui_request`/`agent_ui_resolved`, connection state). It counts drops into diagnostics. [TODO(verify): the exact coalescing rule is specified in [live-state.md](live-state.md) / [protocol-client.md](protocol-client.md); align names.]

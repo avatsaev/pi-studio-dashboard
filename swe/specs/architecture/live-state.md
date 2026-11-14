@@ -42,7 +42,7 @@ Timestamps: `createdAt`/`lastActivity` are epoch ms on the wire; `agent_stream.t
 |------|----------|
 | `feed.ingest` | Internal command `{ events: DaemonEvent[] }` (app-structure; no menu). Non-recording (no undo; live data is not an edit); one revision bump per batch; returns `Effect`s. A malformed batch is rejected with state untouched. |
 | `EngineServices::send_to_daemon(serverId, OutboundRequest)` | Outbound requests (stats poll, timeline fetch, `RespondUi`, `InterruptAgent`, stage 2 subscriptions). Allowlist enforced in L0/L4 (protocol-client `MUTATION_ALLOWLIST` = `agent_ui_respond_request`, `interrupt_agent`). |
-| `Effect` (exactly the Effects table in app-structure.md; reducers stay pure, the owner thread executes them) | `Notify{kind, serverId, itemId}` (`kind` ∈ needsInput\|failures; `itemId` = `"ui:<requestId>"`, `"fail:<agentId>"`; title/body are built by the notifier from the item, see notifications spec); `ResolveNotification{serverId, itemId}`; `Toast{kind, text}`; `CloseDrill{reason}`; `FetchStats{serverId, agentId}`; `FetchTimeline{serverId, agentId}` (one logical (re)load; the client does the paging, D39). The engine is the only place that decides *when* stats and timelines are fetched; the client only executes and dedupes (D39). |
+| `Effect` (exactly the Effects table in app-structure.md; reducers stay pure, the owner thread executes them) | `Notify{kind, serverId, itemId}` (`kind` ∈ needsInput\|failures; `itemId` = `"ui:<requestId>"`, `"fail:<agentId>"`; title/body are built by the notifier from the item, see notifications spec); `ResolveNotification{serverId, itemId}`; `Toast{kind, text}`; `CloseDrill{reason}`; `FetchStats{serverId, agentId}`; `FetchAgents{serverId}` (re-list after a new agent appears by push; answered by `AgentsListed`); `FetchTimeline{serverId, agentId}` (one logical (re)load; the client does the paging, D39). The engine is the only place that decides *when* stats and timelines are fetched; the client only executes and dedupes (D39). |
 
 ### View derivations (read by L6 `view`; pure functions of `MonitorState`, never stored)
 `card_order(filters)`, `daemon_status_counts(daemon)`, `usage_totals(filter) → {tokens, cost, covered, of}`, `attention_items()` (defined in attention spec), `ui_request_actions(item)`.
@@ -114,7 +114,7 @@ Buffered pushes the client collected during sync arrive as ordinary events **aft
 ### Per-event reducers
 ```
 AgentUpdate(a, status?, title?, labels?) / AgentStatus(a, status):     # AgentUpdate is partial: absent fields are left untouched; AgentStatus never arrives in practice
-    entry = agents[a]; if absent: create placeholder {status ?? idle, title} and effects += FetchStats   # until next Snapshot/list
+    entry = agents[a]; if absent: create placeholder {status ?? idle, title} and effects += FetchStats, FetchAgents   # until AgentsListed (cwd, provider) / next Snapshot
     patch present fields; lastActivity = now on status/title change; if running → not running: clear currentTool
     after_status_change(entry, old, new)
 after_status_change(entry, old, new):
