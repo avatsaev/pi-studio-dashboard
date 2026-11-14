@@ -1,0 +1,69 @@
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--pi-color-surface0);
+  color: var(--pi-color-foreground);
+  font-family: var(--pi-font-ui);
+  font-size: var(--pi-font-size-xs);
+  line-height: 1.4;
+  /* A desktop app, not a page: no text selection on chrome, no overscroll bounce. */
+  user-select: none;
+  overscroll-behavior: none;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: var(--pi-color-surface2);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-radius: var(--pi-radius-base);
+  padding: var(--pi-spacing-3) var(--pi-spacing-10);
+}
+
+/* Zero specificity, so a component's own hover colour always wins over this default. */
+:where(button:hover:enabled) {
+  background: var(--pi-color-surface3);
+}
+
+button:disabled {
+  color: var(--pi-color-foregroundMuted);
+}
+
+input[type="text"] {
+  background: var(--pi-color-surface2);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-radius: var(--pi-radius-base);
+  padding: var(--pi-spacing-4) var(--pi-spacing-8);
+  user-select: text;
+}
+
+/* Every interactive element shows where the keyboard is. */
+:focus-visible {
+  outline: var(--pi-border-width-2) solid var(--pi-color-accent);
+  outline-offset: var(--pi-spacing-1);
+}
+
+input[type="checkbox"] {
+  accent-color: var(--pi-color-accent);
+}
+
+/* No motion for people who ask for none: spinners hold still (components also draw a static
+   ring) and enter/exit transitions become instant. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

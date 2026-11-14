@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "messages": [
+    { "file": "agent_stream.unknown_kind.json", "type": "agent_stream", "direction": "server_to_client" },
+    { "file": "agent_ui_request.unknown_method.json", "type": "agent_ui_request", "direction": "server_to_client" },
+    { "file": "agent_update.unknown_status.json", "type": "agent_update", "direction": "server_to_client" },
+    { "file": "status.server_info.no_observability.json", "type": "status", "direction": "server_to_client" }
+  ]
+}

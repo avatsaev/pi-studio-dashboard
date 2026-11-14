@@ -1,0 +1,11 @@
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  list-style: none;
+  margin: 0;
+  padding: var(--pi-spacing-6) var(--pi-spacing-12);
+  background: var(--pi-color-surface0);
+  border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
+}

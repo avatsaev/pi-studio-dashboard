@@ -1,0 +1,23 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.main > section {
+  flex: 1;
+  min-width: 0;
+}
+
+.loading {
+  color: var(--pi-color-foregroundMuted);
+  text-align: center;
+  padding-top: 40vh;
+  margin: 0;
+}

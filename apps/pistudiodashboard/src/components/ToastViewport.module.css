@@ -1,0 +1,89 @@
+.viewport {
+  position: fixed;
+  top: var(--pi-spacing-16);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  max-width: calc(100vw - var(--pi-spacing-32));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  box-sizing: border-box;
+  max-width: 420px;
+  padding: var(--pi-spacing-8) var(--pi-spacing-8) var(--pi-spacing-8) var(--pi-spacing-12);
+  background: var(--pi-color-surface1);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-left: var(--pi-border-width-2) solid var(--rail);
+  border-radius: var(--pi-radius-base);
+  box-shadow: var(--pi-shadow-md);
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-foreground);
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.info {
+  --rail: var(--pi-color-accent);
+}
+
+.warning {
+  --rail: var(--pi-color-statusWarning);
+}
+
+.error {
+  --rail: var(--pi-color-statusDanger);
+}
+
+/* Enter: slides down and fades in. */
+@starting-style {
+  .toast {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Exit: the same transition backwards; a leaving toast must not catch clicks. */
+.exiting {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+/* One line, ellipsised; the full text is in the title attribute. */
+.content {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pi-spacing-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--pi-color-foregroundMuted);
+}
+
+/* No transition for people who ask for none. */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: none;
+  }
+}

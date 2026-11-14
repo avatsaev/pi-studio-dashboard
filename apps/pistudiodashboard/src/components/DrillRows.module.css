@@ -1,0 +1,165 @@
+/* Rows adapt the tool-card recipe (design-system § Drill-down rows): a body on surface1, a hairline,
+   and a border tinted by state. Long text wraps; nothing can widen the panel. */
+.assistant {
+  margin: 0;
+  font-size: var(--pi-font-size-xs);
+  line-height: 1.5;
+  color: var(--pi-color-foreground);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.reasoning {
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-foregroundMuted);
+  font-style: italic;
+}
+
+.reasoning summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.reasoning p {
+  margin: var(--pi-spacing-4) 0 0;
+  padding-left: var(--pi-spacing-10);
+  border-left: var(--pi-border-width-1) solid var(--pi-color-border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tool {
+  --tone: var(--pi-color-border);
+  min-width: 0;
+  background: var(--pi-color-surface1);
+  border: var(--pi-border-width-1) solid color-mix(in srgb, var(--tone) 45%, transparent);
+  border-radius: var(--pi-radius-lg);
+  overflow: hidden;
+}
+
+.running,
+.started {
+  --tone: var(--pi-color-accent);
+}
+
+.completed {
+  --tone: var(--pi-color-statusSuccess);
+}
+
+.error {
+  --tone: var(--pi-color-destructive);
+}
+
+.canceled {
+  --tone: var(--pi-color-border);
+}
+
+.toolHead {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  padding: var(--pi-spacing-7) var(--pi-spacing-12);
+  font-size: var(--pi-font-size-2xs);
+}
+
+.toolIcon {
+  display: inline-flex;
+  flex: none;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.toolLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--pi-font-mono);
+}
+
+.toolStatus {
+  flex: none;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.running .toolStatus,
+.started .toolStatus {
+  color: var(--pi-color-accentBright);
+}
+
+.completed .toolStatus {
+  color: var(--pi-color-statusSuccess);
+}
+
+.error .toolStatus {
+  color: var(--pi-color-statusDanger);
+}
+
+.output {
+  margin: 0;
+  padding: var(--pi-spacing-6) var(--pi-spacing-12);
+  max-height: calc(12 * 1.4em + var(--pi-spacing-12));
+  overflow: auto;
+  border-top: var(--pi-border-width-1) solid var(--pi-color-border);
+  font-family: var(--pi-font-mono);
+  font-size: var(--pi-font-size-3xs);
+  line-height: 1.4;
+  color: var(--pi-color-foregroundMuted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  padding: 0 var(--pi-spacing-12) var(--pi-spacing-7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--pi-font-size-3xs);
+  color: var(--pi-color-foregroundMuted);
+}
+
+.turn {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  font-size: var(--pi-font-size-3xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.turn::before,
+.turn::after {
+  content: "";
+  flex: 1;
+  height: var(--pi-border-width-1);
+  background: var(--pi-color-border);
+}
+
+.turnFailed {
+  color: var(--pi-color-statusDanger);
+}
+
+.errorRow {
+  padding: var(--pi-spacing-6) var(--pi-spacing-10);
+  background: color-mix(in srgb, var(--pi-color-destructive) 10%, var(--pi-color-surface1));
+  border-left: var(--pi-border-width-2) solid var(--pi-color-statusDanger);
+  border-radius: var(--pi-radius-base);
+  font-size: var(--pi-font-size-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.system {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  padding: var(--pi-spacing-2) var(--pi-spacing-8);
+  border-left: var(--pi-border-width-2) solid var(--pi-color-border);
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-foregroundMuted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

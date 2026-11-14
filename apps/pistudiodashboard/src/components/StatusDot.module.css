@@ -1,0 +1,83 @@
+/* The slot is one size for every shape, so a row does not shift when a dot turns into a ring. */
+.slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: calc(var(--pi-status-dot-size) + var(--pi-spacing-4));
+  height: calc(var(--pi-status-dot-size) + var(--pi-spacing-4));
+}
+
+.dot {
+  box-sizing: border-box;
+  width: var(--pi-status-dot-size);
+  height: var(--pi-status-dot-size);
+  border-radius: var(--pi-radius-full);
+  background: var(--dot-color);
+}
+
+/* Unknown status: an empty ring that does not move. */
+.outline {
+  background: transparent;
+  border: var(--pi-border-width-1) solid var(--dot-color);
+}
+
+/* Running: a quiet track with a bright arc, so it reads as work in progress and not as a flat state. */
+.ring {
+  box-sizing: border-box;
+  width: calc(var(--pi-status-dot-size) + var(--pi-spacing-4));
+  height: calc(var(--pi-status-dot-size) + var(--pi-spacing-4));
+  border-radius: var(--pi-radius-full);
+  border: var(--pi-border-width-2) solid color-mix(in srgb, var(--dot-color) 25%, transparent);
+  border-top-color: var(--dot-color);
+  border-right-color: var(--dot-color);
+  animation: spin 0.8s linear infinite;
+}
+
+.accent {
+  --dot-color: var(--pi-color-accent);
+}
+
+.accentBright {
+  --dot-color: var(--pi-color-accentBright);
+}
+
+.muted {
+  --dot-color: var(--pi-color-foregroundMuted);
+}
+
+.warning {
+  --dot-color: var(--pi-color-statusWarning);
+}
+
+.danger {
+  --dot-color: var(--pi-color-statusDanger);
+}
+
+/* A pending dialog asks for attention: paint-only pulse, it cannot shift the layout. */
+.pulse {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--pi-color-statusWarning) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 var(--pi-spacing-4) transparent;
+  }
+}
+
+/* Reduced motion: the running ring is drawn still and the pulse is off. */
+@media (prefers-reduced-motion: reduce) {
+  .ring,
+  .pulse {
+    animation: none;
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "agent_update",
+  "direction": "server_to_client",
+  "description": "An agent_update with a status value this client does not know.",
+  "since": "0.0.115",
+  "stage": 1,
+  "requiresFeature": null,
+  "volatile": [],
+  "frame": {
+    "type": "session",
+    "message": {
+      "type": "agent_update",
+      "agentId": "00000000-0000-4000-8000-000000000001",
+      "status": "levitating",
+      "labels": {}
+    }
+  }
+}

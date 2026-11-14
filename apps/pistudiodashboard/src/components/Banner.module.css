@@ -1,0 +1,35 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--pi-spacing-6) var(--pi-spacing-12);
+  background: color-mix(in srgb, var(--tone) 12%, var(--pi-color-surface1));
+  border-left: var(--pi-border-width-2) solid var(--tone);
+  font-size: var(--pi-font-size-xs);
+  color: var(--pi-color-foreground);
+}
+
+.warning {
+  --tone: var(--pi-color-statusWarning);
+}
+
+.danger {
+  --tone: var(--pi-color-statusDanger);
+}
+
+.info {
+  --tone: var(--pi-color-statusInfo);
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--tone);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}

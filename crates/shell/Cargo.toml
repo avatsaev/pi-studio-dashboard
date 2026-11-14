@@ -1,0 +1,14 @@
+[package]
+name = "pistudiodashboard-shell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pistudiodashboard-engine = { workspace = true }
+pistudiodashboard-model = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

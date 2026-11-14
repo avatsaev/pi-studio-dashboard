@@ -1,0 +1,144 @@
+/* A fixed-height cell: the grid's row maths (virtualisation) is exact only because every card is
+   `--pi-card-height` tall, whatever text it holds. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pi-spacing-2);
+  box-sizing: border-box;
+  height: var(--pi-card-height);
+  min-width: 0;
+  padding: var(--pi-spacing-10) var(--pi-spacing-12);
+  overflow: hidden;
+  text-align: left;
+  font: inherit;
+  color: var(--pi-color-foreground);
+  background: var(--pi-color-surface1);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-left: var(--pi-card-edge-width) solid transparent;
+  border-radius: var(--pi-radius-lg);
+  cursor: pointer;
+}
+
+.card:hover {
+  background: var(--pi-color-surface2);
+  border-color: var(--pi-color-borderAccent);
+  border-left-color: var(--edge, transparent);
+  box-shadow: var(--pi-shadow-sm);
+}
+
+/* The left edge bar says why the card matters: working, waiting for an answer, failed. */
+.running {
+  --edge: var(--pi-color-accent);
+  border-left-color: var(--edge);
+}
+
+.waiting {
+  --edge: var(--pi-color-statusWarning);
+  border-left-color: var(--edge);
+}
+
+.failed {
+  --edge: var(--pi-color-statusDanger);
+  border-left-color: var(--edge);
+  background: color-mix(in srgb, var(--pi-color-destructive) 10%, var(--pi-color-surface1));
+}
+
+.selected,
+.selected:hover {
+  background: color-mix(in srgb, var(--pi-color-accent) 10%, var(--pi-color-surface1));
+  border-color: color-mix(in srgb, var(--pi-color-accent) 45%, transparent);
+  border-left-color: var(--edge, color-mix(in srgb, var(--pi-color-accent) 45%, transparent));
+}
+
+/* Closed and stale cards: the same treatment. */
+.dimmed {
+  opacity: var(--pi-opacity-50);
+}
+
+.head,
+.meta,
+.tool,
+.usage {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-6);
+  min-width: 0;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--pi-font-size-sm);
+  font-weight: var(--pi-font-weight-semibold);
+}
+
+.status {
+  flex: none;
+  font-size: var(--pi-font-size-3xs);
+  color: var(--pi-color-foregroundMuted);
+}
+
+.meta,
+.tool,
+.line,
+.usage {
+  font-size: var(--pi-font-size-2xs);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--pi-color-foregroundMuted);
+}
+
+.daemon,
+.model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model::before {
+  content: "· ";
+}
+
+.stale {
+  flex: none;
+  color: var(--pi-color-statusWarning);
+}
+
+.tool {
+  min-height: 1.4em;
+}
+
+.toolName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--pi-font-mono);
+}
+
+.toolStatus {
+  flex: none;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.line {
+  min-height: 1.4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.usage {
+  margin-top: auto;
+  overflow: hidden;
+  color: var(--pi-color-foregroundMuted);
+  font-variant-numeric: tabular-nums;
+}
+
+.asOf {
+  font-style: italic;
+}

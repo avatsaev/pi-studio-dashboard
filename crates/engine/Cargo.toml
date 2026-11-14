@@ -1,0 +1,21 @@
+[package]
+name = "pistudiodashboard-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pistudiodashboard-protocol = { workspace = true }
+pistudiodashboard-model = { workspace = true }
+pistudiodashboard-ingest = { workspace = true }
+pistudiodashboard-config = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+pistudiodashboard-testkit = { workspace = true }

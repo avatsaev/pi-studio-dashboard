@@ -1,0 +1,62 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pi-spacing-10);
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  gap: var(--pi-spacing-8);
+  align-items: flex-start;
+}
+
+.row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.port {
+  flex: none;
+  width: 88px;
+}
+
+.warning,
+.failure,
+.note {
+  margin: 0;
+  padding: var(--pi-spacing-6) var(--pi-spacing-8);
+  border-left: var(--pi-border-width-2) solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, var(--pi-color-surface1));
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-foreground);
+}
+
+.warning {
+  --tone: var(--pi-color-statusWarning);
+}
+
+.failure {
+  --tone: var(--pi-color-statusDanger);
+}
+
+.note {
+  --tone: var(--pi-color-statusInfo);
+}
+
+.paragraph {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* A daemon name is the daemon's or the user's text: one truncated line, never markup. */
+.name {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  font-weight: var(--pi-font-weight-semibold);
+}

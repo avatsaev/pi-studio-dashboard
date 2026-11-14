@@ -1,0 +1,18 @@
+{
+  "planRoot": "swe",
+  "sprintsDir": "sprints",
+  "grillsDir": "grills",
+  "build": "cargo build --workspace --locked",
+  "lint": "cargo clippy --workspace --locked --all-targets -- -D warnings",
+  "test": "cargo xtask ci",
+  "skipGates": ["typecheck"],
+  "parallelSprints": false,
+  "notesDir": "notes",
+  "gateNotes": {
+    "comment": "`cargo xtask ci` is the single definition of green (fmt, web, clippy, layers, test, panic_hunt, doctest, wasm) and must pass after every task (golden rule 8). Inside a task prefer the focused commands below, then run the full gate once before moving the task to done.",
+    "focusedRust": "cargo test -p pistudiodashboard-<crate>",
+    "focusedFrontend": "cd apps/pistudiodashboard && npm run check && npm run lint && npm test",
+    "ui": "cd apps/pistudiodashboard && npm run snapshot -- --out <file>.png (look at the image, both themes) — golden rule 5",
+    "typecheck": "covered by `npm run check` inside the gate's web step"
+  }
+}

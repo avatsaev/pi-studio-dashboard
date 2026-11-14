@@ -1,0 +1,36 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pi-spacing-6);
+  max-width: 100%;
+  padding: var(--pi-spacing-4) var(--pi-spacing-10);
+  background: var(--pi-color-surface2);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-radius: var(--pi-radius-full);
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-foreground);
+  cursor: pointer;
+}
+
+.chip:hover:enabled {
+  background: var(--pi-color-surface3);
+}
+
+/* Active: a tinted accent with the bright accent as text. */
+.active,
+.active:hover:enabled {
+  background: color-mix(in srgb, var(--pi-color-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--pi-color-accent) 45%, transparent);
+  color: var(--pi-color-accentBright);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: var(--pi-color-foregroundMuted);
+  font-variant-numeric: tabular-nums;
+}

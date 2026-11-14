@@ -1,0 +1,169 @@
+.panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: calc(var(--pi-rail-width) * 1.5);
+  min-height: 0;
+  background: var(--pi-color-surfaceSidebar);
+  border-left: var(--pi-border-width-1) solid var(--pi-color-border);
+}
+
+.header {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--pi-spacing-2);
+  padding: var(--pi-spacing-10) var(--pi-spacing-12);
+  border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-6);
+  min-width: 0;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--pi-font-size-sm);
+  font-weight: var(--pi-font-weight-semibold);
+}
+
+.status {
+  flex: none;
+  font-size: var(--pi-font-size-3xs);
+  color: var(--pi-color-foregroundMuted);
+}
+
+.close {
+  display: inline-flex;
+  flex: none;
+  padding: var(--pi-spacing-4);
+  color: var(--pi-color-foregroundMuted);
+  background: transparent;
+  border: var(--pi-border-width-1) solid transparent;
+  border-radius: var(--pi-radius-base);
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--pi-color-foreground);
+  background: var(--pi-color-surface2);
+}
+
+.meta,
+.usage {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-foregroundMuted);
+}
+
+.stale {
+  color: var(--pi-color-statusWarning);
+}
+
+.asOf {
+  font-style: italic;
+}
+
+/* Reserved for sprint-007 (interrupt, open in web UI, the agent's dialogs). Nothing is drawn until then. */
+.slot:empty {
+  display: none;
+}
+
+.bodyWrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--pi-spacing-8);
+  min-height: 0;
+  padding: var(--pi-spacing-10) var(--pi-spacing-12);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* A column flex container shrinks its children before it scrolls: rows keep their own height. */
+.body > * {
+  flex: none;
+}
+
+.earlier,
+.reloading,
+.loadingText {
+  margin: 0;
+  text-align: center;
+  font-size: var(--pi-font-size-3xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.reloading {
+  display: block;
+  color: var(--pi-color-accentBright);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pi-spacing-8);
+}
+
+.bar {
+  height: var(--pi-spacing-12);
+  background: var(--pi-color-surface2);
+  border-radius: var(--pi-radius-base);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.bar:nth-child(2) {
+  width: 70%;
+}
+
+.bar:nth-child(3) {
+  width: 45%;
+}
+
+.jump {
+  position: absolute;
+  right: var(--pi-spacing-12);
+  bottom: var(--pi-spacing-12);
+  padding: var(--pi-spacing-4) var(--pi-spacing-10);
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-accentForeground);
+  background: var(--pi-color-accent);
+  border: var(--pi-border-width-1) solid var(--pi-color-accent);
+  border-radius: var(--pi-radius-full);
+  box-shadow: var(--pi-shadow-md);
+  cursor: pointer;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: var(--pi-opacity-50);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}

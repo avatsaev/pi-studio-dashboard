@@ -1,0 +1,22 @@
+.rail {
+  width: var(--pi-rail-width);
+  flex: none;
+  padding: var(--pi-spacing-10) var(--pi-spacing-12);
+  background: var(--pi-color-surfaceSidebar);
+  border-left: var(--pi-border-width-1) solid var(--pi-color-border);
+  overflow: auto;
+}
+
+.rail h2 {
+  margin: 0;
+  font-size: var(--pi-font-size-3xs);
+  font-weight: var(--pi-font-weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.collapsed {
+  width: var(--pi-spacing-30);
+  padding: 0;
+}

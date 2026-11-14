@@ -1,0 +1,16 @@
+[package]
+name = "pistudiodashboard-ingest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pistudiodashboard-model = { workspace = true }
+
+[dev-dependencies]
+pistudiodashboard-protocol = { workspace = true }
+proptest = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,23 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  padding: var(--pi-spacing-20);
+  text-align: center;
+  color: var(--pi-color-foregroundMuted);
+  font-size: var(--pi-font-size-xs);
+}
+
+.title,
+.detail {
+  margin: 0;
+}
+
+.title {
+  font-size: var(--pi-font-size-sm);
+}
+
+.detail {
+  font-size: var(--pi-font-size-2xs);
+}

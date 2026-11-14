@@ -1,0 +1,56 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--pi-color-surface0) 70%, transparent);
+}
+
+/* A native <dialog open>, reset to a plain panel inside the scrim. */
+.panel {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pi-spacing-12);
+  box-sizing: border-box;
+  margin: 0;
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  padding: var(--pi-spacing-16);
+  background: var(--pi-color-surface1);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-radius: var(--pi-radius-lg);
+  box-shadow: var(--pi-shadow-lg);
+  color: var(--pi-color-foreground);
+}
+
+.panel:focus {
+  outline: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--pi-font-size-md);
+  font-weight: var(--pi-font-weight-semibold);
+}
+
+.body {
+  min-height: 0;
+  overflow: auto;
+  font-size: var(--pi-font-size-xs);
+  user-select: text;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pi-spacing-8);
+}
+
+.wide {
+  width: 720px;
+}

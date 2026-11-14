@@ -1,0 +1,158 @@
+/* Design tokens: the `--pi-*` values of pi-studio's design language (values only, no source copied;
+   see ATTRIBUTION.md). Components take every colour, size and radius from these variables, never from
+   literals, so a theme is one block and a restyle touches one file. `tokens.test.ts` enforces it and
+   pins the values to `tokens.pin.json`.
+
+   Layout: (1) theme-invariant scales, (2) dark colours (the default, also when `data-theme` is unset),
+   (3) light colours. Blocks 2 and 3 declare exactly the same names. */
+
+/* 1. Scales. */
+:root {
+  /* Spacing: the key is the literal px value (dot-free, so every name is a legal custom property). */
+  --pi-spacing-0: 0px;
+  --pi-spacing-1: 1px;
+  --pi-spacing-2: 2px;
+  --pi-spacing-3: 3px;
+  --pi-spacing-4: 4px;
+  --pi-spacing-5: 5px;
+  --pi-spacing-6: 6px;
+  --pi-spacing-7: 7px;
+  --pi-spacing-8: 8px;
+  --pi-spacing-10: 10px;
+  --pi-spacing-11: 11px;
+  --pi-spacing-12: 12px;
+  --pi-spacing-14: 14px;
+  --pi-spacing-16: 16px;
+  --pi-spacing-20: 20px;
+  --pi-spacing-24: 24px;
+  --pi-spacing-26: 26px;
+  --pi-spacing-30: 30px;
+  --pi-spacing-32: 32px;
+  --pi-spacing-48: 48px;
+  --pi-spacing-64: 64px;
+  --pi-spacing-80: 80px;
+  --pi-spacing-96: 96px;
+  --pi-spacing-128: 128px;
+
+  /* Font sizes in rem against the untouched 16px root (never set `html { font-size }`). */
+  --pi-font-size-4xs: 0.625rem;
+  --pi-font-size-3xs: 0.6875rem;
+  --pi-font-size-2xs: 0.75rem;
+  --pi-font-size-xs: 0.8125rem;
+  --pi-font-size-code: 0.8125rem;
+  --pi-font-size-sm: 0.875rem;
+  --pi-font-size-md: 0.9375rem;
+  --pi-font-size-base: 1.0625rem;
+  --pi-font-size-lg: 1.1875rem;
+  --pi-font-size-xl: 1.3125rem;
+  --pi-font-size-2xl: 1.4375rem;
+  --pi-font-size-3xl: 1.75rem;
+  --pi-font-size-4xl: 2.25rem;
+
+  --pi-font-weight-normal: 400;
+  --pi-font-weight-medium: 500;
+  --pi-font-weight-semibold: 600;
+  --pi-font-weight-bold: 700;
+
+  --pi-radius-none: 0px;
+  --pi-radius-sm: 2px;
+  --pi-radius-base: 4px;
+  --pi-radius-md: 6px;
+  --pi-radius-lg: 8px;
+  --pi-radius-xl: 12px;
+  --pi-radius-2xl: 16px;
+  --pi-radius-full: 9999px;
+
+  --pi-border-width-0: 0px;
+  --pi-border-width-1: 1px;
+  --pi-border-width-2: 2px;
+
+  --pi-opacity-0: 0;
+  --pi-opacity-50: 0.5;
+  --pi-opacity-100: 1;
+
+  --pi-icon-size-xs: 12px;
+  --pi-icon-size-sm: 14px;
+  --pi-icon-size-md: 16px;
+  --pi-icon-size-lg: 20px;
+
+  /* No bundled fonts: the platform stacks only. */
+  --pi-font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --pi-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* Dashboard-local additions (same namespace, not in pi-studio). */
+  --pi-status-dot-size: 8px;
+  --pi-card-min-width: 280px;
+  /* Every card is this tall: the grid's window maths needs exact rows (CardGrid.tsx reads it). */
+  --pi-card-height: 128px;
+  --pi-card-edge-width: 2px;
+  --pi-rail-width: 320px;
+  --pi-statusbar-height: 35px;
+}
+
+/* 2. Dark (default). */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --pi-color-surface0: #181b1a;
+  --pi-color-surface1: #1e2120;
+  --pi-color-surface2: #272a29;
+  --pi-color-surface3: #434645;
+  --pi-color-surface4: #595b5b;
+  --pi-color-surfaceSidebar: #141716;
+  --pi-color-surfaceSidebarHover: #1c1f1e;
+  --pi-color-surfaceWorkspace: #1e2120;
+  --pi-color-foreground: #fafafa;
+  --pi-color-foregroundMuted: #a1a5a4;
+  --pi-color-accent: #2e5cb8;
+  --pi-color-accentBright: #a2b4d7;
+  --pi-color-accentForeground: #ffffff;
+  --pi-color-destructive: #c64f43;
+  --pi-color-destructiveForeground: #ffffff;
+  --pi-color-border: #252b2a;
+  --pi-color-borderAccent: #2f3135;
+  --pi-color-scrollbarHandle: #717574;
+  --pi-color-statusSuccess: #16a34a;
+  --pi-color-statusDanger: #dc2626;
+  --pi-color-statusWarning: #f59e0b;
+  --pi-color-statusInfo: #3b82f6;
+  --pi-color-statusMerged: #9333ea;
+
+  --pi-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.55);
+  --pi-shadow-md: 0 3px 8px rgba(0, 0, 0, 0.55);
+  --pi-shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.55);
+}
+
+/* 3. Light. */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --pi-color-surface0: #ffffff;
+  --pi-color-surface1: #fafafa;
+  --pi-color-surface2: #f4f4f5;
+  --pi-color-surface3: #e4e4e7;
+  --pi-color-surface4: #d4d4d8;
+  --pi-color-surfaceSidebar: #f4f4f5;
+  --pi-color-surfaceSidebarHover: #e9e9ec;
+  --pi-color-surfaceWorkspace: #ffffff;
+  --pi-color-foreground: #1a1a1e;
+  --pi-color-foregroundMuted: #71717a;
+  --pi-color-accent: #253e6f;
+  --pi-color-accentBright: #2f4f8e;
+  --pi-color-accentForeground: #ffffff;
+  --pi-color-destructive: #b04138;
+  --pi-color-destructiveForeground: #ffffff;
+  --pi-color-border: #e4e4e7;
+  --pi-color-borderAccent: #ececf1;
+  --pi-color-scrollbarHandle: #3f3f46;
+  --pi-color-statusSuccess: #15803d;
+  --pi-color-statusDanger: #b91c1c;
+  --pi-color-statusWarning: #d97706;
+  --pi-color-statusInfo: #2563eb;
+  --pi-color-statusMerged: #7c3aed;
+
+  --pi-shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.12);
+  --pi-shadow-md: 0 3px 8px rgba(24, 24, 27, 0.12);
+  --pi-shadow-lg: 0 10px 24px rgba(24, 24, 27, 0.12);
+}

@@ -1,0 +1,21 @@
+{
+  "type": "status",
+  "direction": "server_to_client",
+  "description": "Degraded handshake: no daemonObservability flag; daemonStatusRpc is present but must be ignored without it.",
+  "since": "0.0.115",
+  "stage": 1,
+  "requiresFeature": null,
+  "volatile": [],
+  "frame": {
+    "type": "status",
+    "payload": {
+      "status": "server_info",
+      "serverId": "00000000-0000-4000-8000-000000000001",
+      "capabilities": {},
+      "features": {
+        "extensionUi": true,
+        "daemonStatusRpc": true
+      }
+    }
+  }
+}

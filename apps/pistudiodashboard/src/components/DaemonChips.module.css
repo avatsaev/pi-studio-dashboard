@@ -1,0 +1,191 @@
+.area {
+  background: var(--pi-color-surface0);
+  border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pi-spacing-8);
+  list-style: none;
+  margin: 0;
+  padding: var(--pi-spacing-8) var(--pi-spacing-12);
+}
+
+.chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-6);
+  max-width: 100%;
+  padding: var(--pi-spacing-2) var(--pi-spacing-4) var(--pi-spacing-2) var(--pi-spacing-4);
+  font-size: var(--pi-font-size-2xs);
+  background: var(--pi-color-surface2);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-radius: var(--pi-radius-full);
+}
+
+.selected {
+  background: color-mix(in srgb, var(--pi-color-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--pi-color-accent) 45%, transparent);
+}
+
+.main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pi-spacing-6);
+  min-width: 0;
+  padding: var(--pi-spacing-2) var(--pi-spacing-6);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pi-radius-full);
+  color: var(--pi-color-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.selected .main {
+  color: var(--pi-color-accentBright);
+}
+
+.main:disabled {
+  cursor: default;
+}
+
+.name {
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: var(--pi-color-foregroundMuted);
+  font-variant-numeric: tabular-nums;
+}
+
+.glyph,
+.more,
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: var(--pi-color-foregroundMuted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.glyph {
+  color: var(--pi-color-statusWarning);
+}
+
+.more {
+  padding: 0 var(--pi-spacing-6);
+  border-radius: var(--pi-radius-full);
+  font-size: var(--pi-font-size-sm);
+  line-height: 1.2;
+}
+
+.more:hover,
+.glyph:hover {
+  background: var(--pi-color-surface3);
+}
+
+.action {
+  padding: var(--pi-spacing-1) var(--pi-spacing-8);
+  border: var(--pi-border-width-1) solid var(--pi-color-statusDanger);
+  border-radius: var(--pi-radius-full);
+  color: var(--pi-color-statusDanger);
+  font-size: var(--pi-font-size-xs);
+  font-weight: var(--pi-font-weight-medium);
+}
+
+.action:hover {
+  background: color-mix(in srgb, var(--pi-color-statusDanger) 14%, transparent);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--pi-spacing-4));
+  right: 0;
+  z-index: 50;
+  min-width: 160px;
+  margin: 0;
+  padding: var(--pi-spacing-4);
+  list-style: none;
+  background: var(--pi-color-surface1);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-radius: var(--pi-radius-md);
+  box-shadow: var(--pi-shadow-lg);
+}
+
+.item {
+  display: block;
+  width: 100%;
+  padding: var(--pi-spacing-4) var(--pi-spacing-8);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pi-radius-sm);
+  color: var(--pi-color-foreground);
+  font: inherit;
+  font-size: var(--pi-font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover:enabled {
+  background: var(--pi-color-surface3);
+}
+
+.item:disabled {
+  color: var(--pi-color-foregroundMuted);
+  cursor: default;
+}
+
+.danger {
+  color: var(--pi-color-statusDanger);
+}
+
+.bannerName {
+  font-weight: var(--pi-font-weight-semibold);
+  display: inline-block;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-10);
+  padding: var(--pi-spacing-8) var(--pi-spacing-12);
+  background: var(--pi-color-surface0);
+  border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
+  font-size: var(--pi-font-size-xs);
+  color: var(--pi-color-foregroundMuted);
+}
+
+.message {
+  margin: 0;
+  padding: var(--pi-spacing-6) var(--pi-spacing-12);
+  border-left: var(--pi-border-width-2) solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, var(--pi-color-surface1));
+  font-size: var(--pi-font-size-xs);
+  color: var(--pi-color-foreground);
+}
+
+.message[data-tone="danger"] {
+  --tone: var(--pi-color-statusDanger);
+}
+
+.message[data-tone="warning"] {
+  --tone: var(--pi-color-statusWarning);
+}
+
+.message[data-tone="info"] {
+  --tone: var(--pi-color-statusInfo);
+}

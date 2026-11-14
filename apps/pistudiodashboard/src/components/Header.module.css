@@ -1,0 +1,18 @@
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pi-spacing-12);
+  padding: var(--pi-spacing-6) var(--pi-spacing-12);
+  background: var(--pi-color-surface0);
+  border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: var(--pi-font-size-sm);
+  font-weight: var(--pi-font-weight-semibold);
+}
+
+.connected {
+  color: var(--pi-color-foregroundMuted);
+}

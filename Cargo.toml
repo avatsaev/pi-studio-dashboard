@@ -1,0 +1,72 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "apps/pistudiodashboard/src-tauri", "apps/pistudiodashboard-cli", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+
+[workspace.dependencies]
+# internal: one line per crate, so members write `pistudiodashboard-model = { workspace = true }`
+pistudiodashboard-engine = { path = "crates/engine" }
+pistudiodashboard-shell = { path = "crates/shell" }
+pistudiodashboard-testkit = { path = "crates/testkit" }
+pistudiodashboard-protocol = { path = "crates/protocol" }
+pistudiodashboard-model = { path = "crates/model" }
+pistudiodashboard-config = { path = "crates/config" }
+pistudiodashboard-ingest = { path = "crates/ingest" }
+pistudiodashboard-client = { path = "crates/client" }
+
+# external: versions live here only
+thiserror = "2"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+# dev-only (property tests); MIT OR Apache-2.0. No fork/timeout features (they pull rusty-fork).
+proptest = { version = "1", default-features = false, features = ["std"] }
+clap = { version = "4", features = ["derive", "env"] }
+# `std`: the app installs its own boxed logger.
+log = { version = "0.4", features = ["std"] }
+getrandom = "0.3"
+# OS keychain (app binary only; FORBIDDEN_DEPS below the apps). v4 default `v1` feature: Keychain on macOS, Credential Manager on Windows, Secret Service over pure-Rust zbus on Linux (no libdbus). MIT OR Apache-2.0.
+keyring = "4"
+# L4 client only (FORBIDDEN_DEPS below the apps): runtime, WebSocket, rustls with native roots (no OpenSSL, no MPL root data).
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros", "io-util"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "handshake", "rustls-tls-native-roots"] }
+futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls-native-certs = "0.8"
+# The Tauri family moves together: keep `tauri`, `tauri-build` and every `tauri-plugin-*` on the
+# same major version, and `@tauri-apps/api` in apps/pistudiodashboard/package.json on the same minor as `tauri`.
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+cognitive_complexity = "deny"
+too_many_arguments = "deny"
+wildcard_imports = "deny"
+dbg_macro = "warn"
+todo = "warn"
+
+# Dependencies are optimized and carry no debug info: the app stays responsive in dev builds, and
+# the target dir and link times shrink. The test profile inherits both settings.
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.dev]
+opt-level = 1
+# Line tables keep file:line in panic backtraces but drop variable info (faster links).
+# To inspect locals in a debugger: CARGO_PROFILE_DEV_DEBUG=true.
+debug = "line-tables-only"
+
+# Never add `panic = "abort"` here, although size guides for Tauri suggest it: the crash guard
+# needs unwinding.
+[profile.release]
+lto = "thin"
+codegen-units = 1

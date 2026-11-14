@@ -1,0 +1,64 @@
+.menubar {
+  display: flex;
+  gap: var(--pi-spacing-2);
+  padding: var(--pi-spacing-2) var(--pi-spacing-6);
+  background: var(--pi-color-surface0);
+  border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
+}
+
+.menu {
+  position: relative;
+}
+
+.top {
+  background: none;
+  border-color: transparent;
+  padding: var(--pi-spacing-2) var(--pi-spacing-8);
+}
+
+.top:hover,
+.top.open {
+  background: var(--pi-color-surface3);
+}
+
+.items {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: var(--pi-spacing-4);
+  background: var(--pi-color-surface2);
+  border: var(--pi-border-width-1) solid var(--pi-color-border);
+  border-radius: var(--pi-radius-md);
+  box-shadow: var(--pi-shadow-md);
+}
+
+.items button {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  background: none;
+  border-color: transparent;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.items button:hover:enabled {
+  background: var(--pi-color-surface3);
+}
+
+.items kbd {
+  font: inherit;
+  color: var(--pi-color-foregroundMuted);
+}
+
+.check {
+  width: 1em;
+}
+
+.label {
+  flex: 1;
+}

@@ -1,0 +1,50 @@
+/* `--tone` tints the fill and the border; `--tone-text` is the text colour. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pi-spacing-4);
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: var(--pi-spacing-1) var(--pi-spacing-6);
+  border: var(--pi-border-width-1) solid color-mix(in srgb, var(--tone) 45%, transparent);
+  border-radius: var(--pi-radius-full);
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+  color: var(--tone-text);
+  font-size: var(--pi-font-size-xs);
+  font-weight: var(--pi-font-weight-medium);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.success {
+  --tone: var(--pi-color-statusSuccess);
+  --tone-text: var(--pi-color-statusSuccess);
+}
+
+.danger {
+  --tone: var(--pi-color-statusDanger);
+  --tone-text: var(--pi-color-statusDanger);
+}
+
+.warning {
+  --tone: var(--pi-color-statusWarning);
+  --tone-text: var(--pi-color-statusWarning);
+}
+
+.info {
+  --tone: var(--pi-color-statusInfo);
+  --tone-text: var(--pi-color-statusInfo);
+}
+
+/* The solid accent is too dark to read as text on a dark surface: the tint is the accent, the text its bright variant. */
+.accent {
+  --tone: var(--pi-color-accent);
+  --tone-text: var(--pi-color-accentBright);
+}
+
+.muted {
+  --tone: var(--pi-color-foregroundMuted);
+  --tone-text: var(--pi-color-foregroundMuted);
+}

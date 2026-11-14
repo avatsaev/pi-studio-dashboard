@@ -1,0 +1,31 @@
+/* The mark takes the badge's own colour (currentColor), so the tone lives in one place. */
+.mark {
+  flex: none;
+  width: var(--pi-status-dot-size);
+  height: var(--pi-status-dot-size);
+  border-radius: var(--pi-radius-full);
+  background: currentColor;
+}
+
+.spinner {
+  box-sizing: border-box;
+  flex: none;
+  width: calc(var(--pi-status-dot-size) + var(--pi-spacing-2));
+  height: calc(var(--pi-status-dot-size) + var(--pi-spacing-2));
+  border-radius: var(--pi-radius-full);
+  border: var(--pi-border-width-2) solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

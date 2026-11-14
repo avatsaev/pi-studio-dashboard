@@ -1,0 +1,31 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-2);
+  box-sizing: border-box;
+  height: var(--pi-statusbar-height);
+  flex: none;
+  padding: 0 var(--pi-spacing-12);
+  font-size: var(--pi-font-size-xs);
+  background: var(--pi-color-surface1);
+  border-top: var(--pi-border-width-1) solid var(--pi-color-border);
+}
+
+.summary,
+.error {
+  max-width: 560px;
+  padding: var(--pi-spacing-2) var(--pi-spacing-8);
+  background: var(--pi-color-surface2);
+  border-radius: var(--pi-radius-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error {
+  color: var(--pi-color-statusDanger);
+}
+
+.summary {
+  color: var(--pi-color-foregroundMuted);
+}
