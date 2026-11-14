@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 
 use crate::shortcuts::{self, Shortcut};
 use crate::state::{Dialog, FormMode, ThemeKind};
-use crate::{AppShell, fields};
+use crate::{AppShell, fields, zoom};
 
 pub const MENU_ORDER: &[&str] = &["Daemon", "Agent", "View"];
 
@@ -123,6 +123,69 @@ pub const UI_COMMANDS: &[ShellCommand] = &[
         params: r#"{"serverIds": string[] /* <= 50, empty = all */}"#,
         enabled: all_ok,
         run: |app, p| set_field(app, p, "serverIds", "filterDaemons"),
+        bind_key: "",
+        bound: &[],
+        checked: no_check,
+    },
+    ShellCommand {
+        id: "view.setGroupBy",
+        label: "Group Agents",
+        menu: Some("View"),
+        shortcut: None,
+        params: r#"{"groupBy": "none" | "workspace"}"#,
+        enabled: all_ok,
+        run: |app, p| {
+            let value = p.get("groupBy").ok_or("`groupBy` is required")?;
+            app.set_group_by(fields::group_by(value)?);
+            Ok(())
+        },
+        bind_key: "groupBy",
+        bound: &[Bound { value: "none", label: "Group: None" }, Bound { value: "workspace", label: "Group: By Workspace" }],
+        checked: |app, value| value.map(|v| v == app.ui.group_by.name()),
+    },
+    ShellCommand {
+        id: "view.zoomIn",
+        label: "Zoom In",
+        menu: Some("View"),
+        shortcut: Some("Cmd+="),
+        params: "{}",
+        enabled: |app| zoom::zoom_in(app.ui.zoom).map(|_| ()).ok_or_else(|| "already at the largest size".to_owned()),
+        run: |app, _| {
+            let next = zoom::zoom_in(app.ui.zoom).ok_or("already at the largest size")?;
+            app.set_zoom(next);
+            Ok(())
+        },
+        bind_key: "",
+        bound: &[],
+        checked: no_check,
+    },
+    ShellCommand {
+        id: "view.zoomOut",
+        label: "Zoom Out",
+        menu: Some("View"),
+        shortcut: Some("Cmd+-"),
+        params: "{}",
+        enabled: |app| zoom::zoom_out(app.ui.zoom).map(|_| ()).ok_or_else(|| "already at the smallest size".to_owned()),
+        run: |app, _| {
+            let next = zoom::zoom_out(app.ui.zoom).ok_or("already at the smallest size")?;
+            app.set_zoom(next);
+            Ok(())
+        },
+        bind_key: "",
+        bound: &[],
+        checked: no_check,
+    },
+    ShellCommand {
+        id: "view.zoomReset",
+        label: "Actual Size",
+        menu: Some("View"),
+        shortcut: Some("Cmd+0"),
+        params: "{}",
+        enabled: |app| if app.ui.zoom == zoom::DEFAULT { Err("already at 100%".to_owned()) } else { Ok(()) },
+        run: |app, _| {
+            app.set_zoom(zoom::DEFAULT);
+            Ok(())
+        },
         bind_key: "",
         bound: &[],
         checked: no_check,

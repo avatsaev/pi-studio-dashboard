@@ -2,7 +2,7 @@
 // and a timeline with every row kind. Built on `sampleView()` (its ui, menus and chips).
 
 import { sampleView } from "./test-support";
-import type { Card, DaemonChip, DrillItem, DrillView, MenuItem, MonitorView, View } from "./lib/types";
+import type { Card, DaemonChip, DrillItem, DrillView, GroupHeader, MenuItem, MonitorView, View } from "./lib/types";
 
 export function card(agentId: string, title: string, status: Card["status"], more: Partial<Card> = {}): Card {
   return {
@@ -11,6 +11,8 @@ export function card(agentId: string, title: string, status: Card["status"], mor
     daemonName: "workstation",
     title,
     model: "mock",
+    cwd: "/work/app",
+    workspaceLabel: "app",
     status,
     statusLabel: status,
     dimmed: status === "closed",
@@ -74,6 +76,55 @@ export function bigView(total = 150, start = 0, window = 120): View {
     totals: { tokens: 0, cost: 0, covered: 0, of: total, label: `0 of ${total} agents` },
     cards: { total, start, virtualised: total > 100, window: cards },
   });
+}
+
+export interface SampleGroup {
+  label: string;
+  path: string | null;
+  serverId?: string;
+  daemonName?: string;
+  /** Statuses of the group's cards, in order. */
+  statuses: Card["status"][];
+}
+
+/** A grouped view (`groupBy: "workspace"`) of the given groups, laid out the way the shell sends them. */
+export function groupedOf(groups: SampleGroup[], virtualised = false): View {
+  const headers: GroupHeader[] = [];
+  const cards: Card[] = [];
+  groups.forEach((g, gi) => {
+    const serverId = g.serverId ?? "srv-1";
+    const daemonName = g.daemonName ?? "workstation";
+    headers.push({
+      key: `${serverId.length}:${serverId}${g.path ?? ""}#${gi}`,
+      serverId,
+      daemonName,
+      label: g.label,
+      path: g.path,
+      count: g.statuses.length,
+      start: cards.length,
+      needsAttention: g.statuses.some((s) => s === "error"),
+    });
+    g.statuses.forEach((status, i) => {
+      cards.push(card(`w${gi}-${i}`, `${g.label} agent ${i + 1}`, status, { serverId, daemonName, cwd: g.path, workspaceLabel: g.label }));
+    });
+  });
+  const base = withMonitor({
+    totals: { tokens: 0, cost: 0, covered: 0, of: cards.length, label: `0 of ${cards.length} agents` },
+    cards: { total: cards.length, start: 0, virtualised, window: cards },
+    groupBy: "workspace",
+    groups: { total: groups.length, window: headers, ...(virtualised ? { layout: groups.map((g) => g.statuses.length) } : {}) },
+  });
+  return { ...base, ui: { ...base.ui, groupBy: "workspace" } };
+}
+
+/** Four workspaces on one daemon: two sharing a folder name, one with an errored agent, and agents without a workspace. */
+export function groupedView(): View {
+  return groupedOf([
+    { label: "a/app", path: "/work/a/app", statuses: ["error", "running", "idle", "closed"] },
+    { label: "b/app", path: "/work/b/app", statuses: ["running", "idle"] },
+    { label: "docs", path: "/work/docs", statuses: ["idle"] },
+    { label: "No workspace", path: null, statuses: ["idle", "idle"] },
+  ]);
 }
 
 /** A timeline with every row kind. */

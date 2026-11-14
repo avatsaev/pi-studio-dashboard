@@ -1,0 +1,51 @@
+/* Exactly `--pi-group-header-height` tall: the virtualised grouped grid computes offsets from it. */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--pi-spacing-8);
+  box-sizing: border-box;
+  height: var(--pi-group-header-height);
+  min-width: 0;
+  padding: 0 var(--pi-spacing-4);
+  border-bottom: var(--pi-border-width-1) solid var(--pi-color-border);
+  white-space: nowrap;
+}
+
+.label {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--pi-font-size-sm);
+  font-weight: var(--pi-font-weight-semibold);
+  color: var(--pi-color-foreground);
+}
+
+.path,
+.daemon {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--pi-font-size-2xs);
+  color: var(--pi-color-foregroundMuted);
+}
+
+.path {
+  flex: 1 1 auto;
+}
+
+.daemon {
+  flex: none;
+  max-width: 25%;
+}
+
+.daemon::before {
+  content: "on ";
+}
+
+.badges {
+  display: flex;
+  flex: none;
+  gap: var(--pi-spacing-4);
+  margin-left: auto;
+}

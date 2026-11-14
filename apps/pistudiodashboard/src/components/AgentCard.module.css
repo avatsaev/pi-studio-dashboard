@@ -95,13 +95,28 @@
 }
 
 .daemon,
+.workspace,
 .model {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* The workspace is what tells two agents of one daemon apart: it gets the room, the model yields first. */
+.workspace {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--pi-color-foreground);
+}
+
+.model {
+  flex: 0 1 auto;
+  max-width: 45%;
+}
+
+.workspace::before,
 .model::before {
   content: "· ";
+  color: var(--pi-color-foregroundMuted);
 }
 
 .stale {

@@ -31,7 +31,7 @@ fn the_view_is_the_ui_state_the_monitor_and_the_generated_menu_bar() {
     assert_eq!(
         view["ui"],
         json!({
-            "theme": "dark", "filterDaemons": [], "filterStatuses": [], "attentionRailCollapsed": false, "focusItem": null,
+            "theme": "dark", "filterDaemons": [], "filterStatuses": [], "attentionRailCollapsed": false, "groupBy": "workspace", "zoom": 100, "focusItem": null,
             "gridWindow": {"start": 0, "count": 100}, "dialog": null, "diagnosticsTarget": null, "toasts": [], "status": ""
         })
     );
@@ -208,6 +208,10 @@ fn engine_commands_lists_the_shell_commands_with_unique_ids() {
         [
             "view.setTheme",
             "view.filterDaemons",
+            "view.setGroupBy",
+            "view.zoomIn",
+            "view.zoomOut",
+            "view.zoomReset",
             "view.filterStatuses",
             "view.toggleAttentionRail",
             "view.setGridWindow",
@@ -346,4 +350,193 @@ fn menu_clicks_open_the_forms_and_target_the_one_daemon() {
     assert!(err.contains("several daemons"), "{err}");
     // Engine params still reach the engine command: the form submit and the CLI.
     assert!(app.run("daemon.add", json!({"name": "Three", "host": "h", "port": 1})).is_ok());
+}
+
+mod group_by {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use pistudiodashboard_config::Config;
+    use pistudiodashboard_engine::{ConfigStore, EngineServices, GroupBy, LoadedConfig};
+
+    use super::*;
+
+    struct Saves(Rc<RefCell<Vec<GroupBy>>>);
+
+    impl ConfigStore for Saves {
+        fn load(&mut self) -> LoadedConfig {
+            LoadedConfig { config: Config::default(), issues: Vec::new(), read_only: false }
+        }
+        fn save(&mut self, config: &Config) -> Result<(), String> {
+            self.0.borrow_mut().push(config.settings.group_by);
+            Ok(())
+        }
+    }
+
+    fn saving_app() -> (AppShell, Rc<RefCell<Vec<GroupBy>>>) {
+        let saves = Rc::default();
+        let services = EngineServices { config_store: Some(Box::new(Saves(Rc::clone(&saves)))), ..EngineServices::default() };
+        (AppShell::new(Session::new().with_services(services), Services::default()), saves)
+    }
+
+    #[test]
+    fn the_command_sets_the_state_the_document_and_saves_once() {
+        let (mut app, saves) = saving_app();
+        app.run("view.setGroupBy", json!({"groupBy": "none"})).unwrap();
+        assert_eq!(app.ui.group_by, GroupBy::None);
+        let view = control::view(&mut app);
+        assert_eq!((view["ui"]["groupBy"].clone(), view["document"]["groupBy"].clone()), (json!("none"), json!("none")));
+        assert!(view["document"].get("groups").is_none(), "flat: no groups block");
+        assert_eq!(*saves.borrow(), [GroupBy::None]);
+        let grouped = {
+            app.run("view.setGroupBy", json!({"groupBy": "workspace"})).unwrap();
+            control::view(&mut app)["document"].clone()
+        };
+        assert!(grouped["groups"].is_object());
+        assert_eq!(saves.borrow().len(), 2);
+        app.run("view.setGroupBy", json!({"groupBy": "workspace"})).unwrap();
+        assert_eq!(saves.borrow().len(), 2, "no change, no save");
+    }
+
+    #[test]
+    fn a_bad_value_is_refused_through_every_door_and_changes_nothing() {
+        let (mut app, saves) = saving_app();
+        for refused in [
+            app.run("view.setGroupBy", json!({"groupBy": "banana"})).unwrap_err(),
+            app.run("view.setGroupBy", json!({})).unwrap_err(),
+            control::handle(&mut app, "ui.set", &json!({"groupBy": "banana"}))["error"].as_str().unwrap().to_owned(),
+        ] {
+            assert!(refused.contains("groupBy"), "{refused}");
+        }
+        assert_eq!((app.ui.group_by, saves.borrow().len()), (GroupBy::Workspace, 0));
+    }
+
+    #[test]
+    fn the_menu_offers_both_modes_with_one_checked_and_invoking_matches_the_command() {
+        let (mut app, _saves) = saving_app();
+        let checks = |app: &mut AppShell| ["none", "workspace"].map(|m| menu_item(app, &format!("view.setGroupBy:{m}"))["checked"].clone());
+        assert_eq!(checks(&mut app), [json!(false), json!(true)], "grouped by workspace by default");
+        assert_eq!(menu_item(&mut app, "view.setGroupBy:none")["label"], "Group: None");
+        menus::invoke(&mut app, "view.setGroupBy:none").unwrap();
+        assert_eq!((app.ui.group_by, checks(&mut app)), (GroupBy::None, [json!(true), json!(false)]));
+    }
+
+    #[test]
+    fn ui_set_saves_too_and_a_changed_layout_returns_to_the_top() {
+        let (mut app, saves) = saving_app();
+        control::handle(&mut app, "ui.set", &json!({"gridWindow": {"start": 300, "count": 40}}));
+        assert_eq!(control::handle(&mut app, "ui.set", &json!({"groupBy": "none"}))["ok"], true);
+        assert_eq!((app.ui.grid_window.start, saves.borrow().clone()), (0, vec![GroupBy::None]));
+        control::handle(&mut app, "ui.set", &json!({"groupBy": "workspace", "gridWindow": {"start": 5, "count": 40}}));
+        assert_eq!(app.ui.grid_window.start, 5, "a request that says where to look keeps it");
+        control::handle(&mut app, "ui.set", &json!({"theme": "light"}));
+        assert_eq!(saves.borrow().len(), 2, "other fields do not touch the saved grouping");
+    }
+
+    #[test]
+    fn adopt_settings_takes_the_loaded_value() {
+        let mut app = app();
+        app.session.apply_loaded_config(LoadedConfig {
+            config: {
+                let mut c = Config::default();
+                c.settings.group_by = GroupBy::None;
+                c
+            },
+            issues: Vec::new(),
+            read_only: false,
+        });
+        app.adopt_settings();
+        assert_eq!(app.ui.group_by, GroupBy::None);
+    }
+}
+
+mod zoom {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use pistudiodashboard_config::Config;
+    use pistudiodashboard_engine::{ConfigStore, EngineServices, LoadedConfig};
+
+    use super::*;
+
+    struct Saves(Rc<RefCell<Vec<u16>>>);
+
+    impl ConfigStore for Saves {
+        fn load(&mut self) -> LoadedConfig {
+            LoadedConfig { config: Config::default(), issues: Vec::new(), read_only: false }
+        }
+        fn save(&mut self, config: &Config) -> Result<(), String> {
+            self.0.borrow_mut().push(config.settings.zoom);
+            Ok(())
+        }
+    }
+
+    fn saving_app() -> (AppShell, Rc<RefCell<Vec<u16>>>) {
+        let saves = Rc::default();
+        let services = EngineServices { config_store: Some(Box::new(Saves(Rc::clone(&saves)))), ..EngineServices::default() };
+        (AppShell::new(Session::new().with_services(services), Services::default()), saves)
+    }
+
+    #[test]
+    fn zoom_in_out_and_actual_size_step_through_the_levels_and_save_each_change() {
+        let (mut app, saves) = saving_app();
+        assert_eq!(app.ui.zoom, 100);
+        app.run("view.zoomIn", json!({})).unwrap();
+        app.run("view.zoomIn", json!({})).unwrap();
+        assert_eq!(app.ui.zoom, 125);
+        app.run("view.zoomOut", json!({})).unwrap();
+        assert_eq!(app.ui.zoom, 110);
+        app.run("view.zoomReset", json!({})).unwrap();
+        assert_eq!(app.ui.zoom, 100);
+        assert_eq!(*saves.borrow(), [110, 125, 110, 100]);
+        assert_eq!(control::view(&mut app)["ui"]["zoom"], 100);
+    }
+
+    #[test]
+    fn at_the_ends_the_command_is_disabled_with_the_reason_and_refuses() {
+        let (mut app, _saves) = saving_app();
+        control::handle(&mut app, "ui.set", &json!({"zoom": 300}));
+        let item = menu_item(&mut app, "view.zoomIn");
+        assert_eq!((item["enabled"].clone(), item["reason"].clone()), (json!(false), json!("already at the largest size")));
+        assert!(app.run("view.zoomIn", json!({})).is_err());
+        control::handle(&mut app, "ui.set", &json!({"zoom": 50}));
+        assert_eq!(menu_item(&mut app, "view.zoomOut")["reason"], "already at the smallest size");
+        app.run("view.zoomReset", json!({})).unwrap();
+        assert_eq!(menu_item(&mut app, "view.zoomReset")["reason"], "already at 100%");
+    }
+
+    #[test]
+    fn the_menu_has_the_three_entries_with_their_shortcuts() {
+        let (mut app, _saves) = saving_app();
+        for (id, label, key) in [("view.zoomIn", "Zoom In", "="), ("view.zoomOut", "Zoom Out", "-"), ("view.zoomReset", "Actual Size", "0")] {
+            let item = menu_item(&mut app, id);
+            assert_eq!((item["label"].clone(), item["shortcut"]["key"].clone(), item["shortcut"]["cmd"].clone()), (json!(label), json!(key), json!(true)));
+        }
+        assert_eq!(menus::invoke(&mut app, "view.zoomIn"), Ok(Value::Null));
+        assert_eq!(app.ui.zoom, 110);
+    }
+
+    #[test]
+    fn ui_set_validates_the_range_and_saves() {
+        let (mut app, saves) = saving_app();
+        for bad in [json!(49), json!(301), json!("big"), json!(1.5), json!(-1), json!(null)] {
+            let reply = control::handle(&mut app, "ui.set", &json!({"zoom": bad}));
+            assert!(reply["error"].as_str().is_some_and(|e| e.contains("`zoom`")), "{reply}");
+        }
+        assert_eq!((app.ui.zoom, saves.borrow().len()), (100, 0));
+        assert_eq!(control::handle(&mut app, "ui.set", &json!({"zoom": 137}))["ok"], true);
+        assert_eq!((app.ui.zoom, saves.borrow().clone()), (137, vec![137]));
+        control::handle(&mut app, "ui.set", &json!({"theme": "light"}));
+        assert_eq!(saves.borrow().len(), 1, "other fields do not touch the saved zoom");
+    }
+
+    #[test]
+    fn adopt_settings_takes_the_loaded_zoom() {
+        let mut app = app();
+        let mut config = Config::default();
+        config.settings.zoom = 150;
+        app.session.apply_loaded_config(LoadedConfig { config, issues: Vec::new(), read_only: false });
+        app.adopt_settings();
+        assert_eq!(app.ui.zoom, 150);
+    }
 }

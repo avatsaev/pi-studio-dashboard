@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use pistudiodashboard_config::{Config, DaemonEntry, FieldError, MAX_DAEMONS, new_entry_id, normalise_host, validate_entry};
+use pistudiodashboard_config::{Config, DaemonEntry, FieldError, GroupBy, MAX_DAEMONS, new_entry_id, normalise_host, validate_entry};
 use pistudiodashboard_model::{ConnState, DaemonEvent, DaemonEventKind, DaemonSlice, ToastKind};
 use serde_json::{Value, json};
 
@@ -191,6 +191,25 @@ impl Session {
     #[must_use]
     pub fn config(&self) -> &Config {
         &self.daemon.config
+    }
+
+    /// Set the saved grouping mode. Saves only when the value changes (the store, read-only mode
+    /// and failures are handled by `persist`, like every other config change).
+    pub fn set_group_by(&mut self, group_by: GroupBy) {
+        if self.daemon.config.settings.group_by == group_by {
+            return;
+        }
+        self.daemon.config.settings.group_by = group_by;
+        self.persist();
+    }
+
+    /// Set the saved zoom (percent). Saved like the grouping mode: only on a change.
+    pub fn set_zoom(&mut self, zoom: u16) {
+        if self.daemon.config.settings.zoom == zoom {
+            return;
+        }
+        self.daemon.config.settings.zoom = zoom;
+        self.persist();
     }
 
     /// Adopt a config loaded at startup: it becomes the engine's config and one slice per entry
@@ -818,6 +837,37 @@ mod tests {
         add(&mut ro.s, "Box", 1).unwrap();
         assert!(ro.log.borrow().saves.is_empty());
         assert!(ro.s.take_toasts().iter().any(|t| t.text.contains("newer version")));
+    }
+
+    #[test]
+    fn group_by_saves_once_per_change_and_respects_read_only() {
+        let mut r = rig(Mode::Ok, false, false, false);
+        assert_eq!(r.s.config().settings.group_by, GroupBy::Workspace, "the default");
+        r.s.set_group_by(GroupBy::Workspace);
+        assert!(r.log.borrow().saves.is_empty(), "the default again is no change");
+        r.s.set_group_by(GroupBy::None);
+        r.s.set_group_by(GroupBy::None);
+        assert_eq!(r.log.borrow().saves.len(), 1);
+        assert_eq!(r.log.borrow().saves[0].settings.group_by, GroupBy::None);
+        assert_eq!(r.s.config().settings.group_by, GroupBy::None);
+        let mut ro = rig(Mode::Ok, false, false, false);
+        ro.s.apply_loaded_config(LoadedConfig { config: Config::default(), issues: Vec::new(), read_only: true });
+        ro.s.set_group_by(GroupBy::None);
+        ro.s.set_group_by(GroupBy::Workspace);
+        assert!(ro.log.borrow().saves.is_empty());
+        assert_eq!(ro.s.config().settings.group_by, GroupBy::Workspace);
+        assert_eq!(ro.s.take_toasts().iter().filter(|t| t.text.contains("newer version")).count(), 1);
+    }
+
+    #[test]
+    fn zoom_saves_once_per_change() {
+        let mut r = rig(Mode::Ok, false, false, false);
+        r.s.set_zoom(100);
+        assert!(r.log.borrow().saves.is_empty(), "the default again is no change");
+        r.s.set_zoom(125);
+        r.s.set_zoom(125);
+        assert_eq!(r.log.borrow().saves.len(), 1);
+        assert_eq!((r.log.borrow().saves[0].settings.zoom, r.s.config().settings.zoom), (125, 125));
     }
 
     #[test]

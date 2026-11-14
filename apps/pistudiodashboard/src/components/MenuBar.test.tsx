@@ -36,7 +36,10 @@ describe("MenuBar", () => {
 
   it("disables what cannot run now and says why", async () => {
     const menus = sampleView().menus;
-    const rail = menus[2].items[3];
+    const rail = menus[2].items.find((i) => i.id === "view.toggleAttentionRail");
+    if (!rail) {
+      throw new Error("sample menus have the rail toggle");
+    }
     rail.enabled = false;
     rail.reason = "nothing to toggle";
     const onInvoke = vi.fn<(id: string) => void>();

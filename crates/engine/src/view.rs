@@ -5,11 +5,17 @@
 
 use std::collections::BTreeMap;
 
-use pistudiodashboard_ingest::{Filters, card_order, daemon_status_counts, usage_totals};
+use pistudiodashboard_config::GroupBy;
+use pistudiodashboard_ingest::{
+    Filters, WorkspaceGroup, card_order, daemon_status_counts, grouped_order, label_of, usage_totals, workspace_labels, workspace_of,
+};
 use pistudiodashboard_model::{AgentEntry, AgentStatus, DrillBuffer, DrillState, MonitorState, UsageSnapshot};
 use serde_json::{Map, Value, json};
 
 use crate::{EngineError, Result, Session, params};
+
+/// Workspace labels by normalised path, for the filtered scope.
+type Labels = BTreeMap<String, String>;
 
 /// Above this many cards the frontend virtualises the grid.
 const VIRTUALISE_ABOVE: usize = 100;
@@ -32,6 +38,7 @@ struct ViewParams {
     statuses: Vec<AgentStatus>,
     window: Option<(usize, usize)>,
     rail_collapsed: bool,
+    group_by: GroupBy,
 }
 
 fn bad(msg: String) -> EngineError {
@@ -67,6 +74,14 @@ fn window(p: &Value) -> Result<Option<(usize, usize)>> {
     Ok(Some((clamp(start), clamp(count))))
 }
 
+fn group_by(p: &Value) -> Result<GroupBy> {
+    match p.get("groupBy") {
+        None | Some(Value::Null) => Ok(GroupBy::None),
+        Some(Value::String(s)) => GroupBy::from_name(s).ok_or_else(|| bad(format!("`groupBy` is one of: none, workspace; got `{s}`"))),
+        Some(other) => Err(bad(format!("`groupBy` must be a string (none, workspace), got {}", params::kind(other)))),
+    }
+}
+
 fn read_params(p: &Value) -> Result<ViewParams> {
     let statuses = string_list(p, "filterStatuses")?
         .into_iter()
@@ -77,6 +92,7 @@ fn read_params(p: &Value) -> Result<ViewParams> {
         statuses,
         window: window(p)?,
         rail_collapsed: params::bool_param(p, "railCollapsed")?.unwrap_or(false),
+        group_by: group_by(p)?,
     })
 }
 
@@ -118,7 +134,8 @@ impl<'a> Names<'a> {
     }
 }
 
-fn card(m: &MonitorState, names: &Names<'_>, a: &AgentEntry) -> Value {
+fn card(m: &MonitorState, names: &Names<'_>, labels: &Labels, a: &AgentEntry) -> Value {
+    let workspace = workspace_of(a.cwd.as_deref());
     let selected = m.drilldown.as_ref().is_some_and(|d| d.target.server_id == a.server_id && d.target.agent_id == a.agent_id);
     json!({
         "serverId": a.server_id,
@@ -126,6 +143,8 @@ fn card(m: &MonitorState, names: &Names<'_>, a: &AgentEntry) -> Value {
         "daemonName": names.get(&a.server_id),
         "title": a.title.as_deref().unwrap_or(&a.agent_id),
         "model": a.model,
+        "cwd": workspace,
+        "workspaceLabel": label_of(labels, workspace.as_deref()),
         "status": status_name(a.status),
         "statusLabel": status_name(a.status),
         "dimmed": a.status == AgentStatus::Closed || a.stale,
@@ -139,7 +158,7 @@ fn card(m: &MonitorState, names: &Names<'_>, a: &AgentEntry) -> Value {
     })
 }
 
-fn drill(m: &MonitorState, names: &Names<'_>, d: &DrillBuffer) -> Value {
+fn drill(m: &MonitorState, names: &Names<'_>, labels: &Labels, d: &DrillBuffer) -> Value {
     let state = match d.state {
         DrillState::Loading => "loading",
         DrillState::Live => "live",
@@ -147,12 +166,47 @@ fn drill(m: &MonitorState, names: &Names<'_>, d: &DrillBuffer) -> Value {
     };
     json!({
         "key": {"serverId": d.target.server_id, "agentId": d.target.agent_id},
-        "header": m.agent(&d.target.server_id, &d.target.agent_id).map(|a| card(m, names, a)),
+        "header": m.agent(&d.target.server_id, &d.target.agent_id).map(|a| card(m, names, labels, a)),
         "items": d.items.iter().map(|i| serde_json::to_value(i).unwrap_or(Value::Null)).collect::<Vec<_>>(),
         "truncatedAtStart": d.truncated_at_start,
         "state": state,
         "stale": d.stale,
     })
+}
+
+/// An injective id for a group: length-prefixed daemon id, then the path.
+fn group_key(g: &WorkspaceGroup) -> String {
+    format!("{}:{}{}", g.server_id.len(), g.server_id, g.workspace.as_deref().unwrap_or(""))
+}
+
+/// The `groups` block: headers of the groups that touch the card slice `[start, end)`, and (when
+/// the list is virtualised) every group's card count so the frontend can place any header.
+fn groups_block(groups: &[WorkspaceGroup], names: &Names<'_>, start: usize, end: usize, virtualised: bool) -> Value {
+    let mut first = 0usize;
+    let mut window = Vec::new();
+    for g in groups {
+        let count = g.cards.len();
+        if first < end && first + count > start {
+            window.push(json!({
+                "key": group_key(g),
+                "serverId": g.server_id,
+                "daemonName": names.get(&g.server_id),
+                "label": g.label,
+                "path": g.workspace,
+                "count": count,
+                "start": first,
+                "needsAttention": g.needs_attention,
+            }));
+        }
+        first += count;
+    }
+    let mut block = Map::new();
+    block.insert("total".into(), json!(groups.len()));
+    block.insert("window".into(), Value::Array(window));
+    if virtualised {
+        block.insert("layout".into(), json!(groups.iter().map(|g| g.cards.len()).collect::<Vec<_>>()));
+    }
+    Value::Object(block)
 }
 
 fn daemon_chips(s: &Session, m: &MonitorState, selected: &[String]) -> Vec<Value> {
@@ -248,18 +302,25 @@ pub(crate) fn monitor_view(s: &Session, p: &Value) -> Result<Value> {
         selected_entries
     };
     let filters = Filters { daemons: daemon_filter.clone(), statuses: filter_statuses(&vp.statuses) };
-    let order = card_order(&m, &filters);
-    let totals = usage_totals(&m, &filters);
     let names = Names::new(&m);
+    let totals = usage_totals(&m, &filters);
+    let (order, labels, groups) = if vp.group_by == GroupBy::Workspace {
+        let groups = grouped_order(&m, &filters);
+        let labels: Labels = groups.iter().filter_map(|g| g.workspace.clone().map(|w| (w, g.label.clone()))).collect();
+        (groups.iter().flat_map(|g| g.cards.iter().cloned()).collect::<Vec<_>>(), labels, Some(groups))
+    } else {
+        (card_order(&m, &filters), workspace_labels(&m, &filters), None)
+    };
     let total = order.len();
     let (start, end) = card_range(total, vp.window);
-    let cards: Vec<Value> = order.get(start..end).unwrap_or_default().iter().filter_map(|(sid, aid)| m.agent(sid, aid)).map(|a| card(&m, &names, a)).collect();
+    let cards: Vec<Value> =
+        order.get(start..end).unwrap_or_default().iter().filter_map(|(sid, aid)| m.agent(sid, aid)).map(|a| card(&m, &names, &labels, a)).collect();
     let mut cards_obj = Map::new();
     cards_obj.insert("total".into(), json!(total));
     cards_obj.insert("start".into(), json!(start));
     cards_obj.insert("virtualised".into(), json!(total > VIRTUALISE_ABOVE));
     cards_obj.insert("window".into(), Value::Array(cards));
-    Ok(json!({
+    let mut view = json!({
         "revision": s.revision(),
         "daemonChips": daemon_chips(s, &m, &vp.daemons),
         "statusChips": status_chips(&m, &daemon_filter, &vp.statuses),
@@ -271,9 +332,14 @@ pub(crate) fn monitor_view(s: &Session, p: &Value) -> Result<Value> {
             "label": format!("{} of {} agents", totals.covered, totals.of),
         },
         "cards": Value::Object(cards_obj),
-        "drill": m.drilldown.as_ref().map(|d| drill(&m, &names, d)),
+        "drill": m.drilldown.as_ref().map(|d| drill(&m, &names, &labels, d)),
         "railCollapsed": vp.rail_collapsed,
-    }))
+        "groupBy": vp.group_by.name(),
+    });
+    if let (Some(groups), Some(obj)) = (&groups, view.as_object_mut()) {
+        obj.insert("groups".into(), groups_block(groups, &names, start, end, total > VIRTUALISE_ABOVE));
+    }
+    Ok(view)
 }
 
 #[cfg(test)]
@@ -509,6 +575,127 @@ mod tests {
         }
     }
 
+    /// `(agent id, cwd, status)` rows on one daemon `srv`.
+    fn with_cwds(rows: &[(&str, Option<&str>, AgentStatus)]) -> Session {
+        let mut m = MonitorState::default();
+        let mut d = DaemonSlice::new("e1", "box");
+        d.server_id = Some("srv".into());
+        m.daemons.push(d);
+        for (id, cwd, status) in rows {
+            m.upsert_agent(AgentEntry {
+                server_id: "srv".into(),
+                agent_id: (*id).into(),
+                cwd: cwd.map(str::to_owned),
+                status: *status,
+                ..AgentEntry::default()
+            });
+        }
+        Session::with_monitor(m)
+    }
+
+    fn group_labels(v: &Value) -> Vec<(String, u64, u64)> {
+        v["groups"]["window"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|g| (g["label"].as_str().unwrap().to_owned(), g["count"].as_u64().unwrap(), g["start"].as_u64().unwrap()))
+            .collect()
+    }
+
+    #[test]
+    fn flat_mode_adds_only_the_workspace_fields_and_no_groups() {
+        let mut s = with_cwds(&[("a", Some("/work/a/app/"), AgentStatus::Idle), ("b", None, AgentStatus::Idle)]);
+        let v = s.execute("document.inspect", json!({})).unwrap();
+        assert_eq!(v["groupBy"], "none");
+        assert!(v.get("groups").is_none());
+        let by_id = |id: &str| v["cards"]["window"].as_array().unwrap().iter().find(|c| c["agentId"] == id).unwrap().clone();
+        assert_eq!((by_id("a")["cwd"].clone(), by_id("a")["workspaceLabel"].clone()), (json!("/work/a/app"), json!("app")));
+        assert_eq!((by_id("b")["cwd"].clone(), by_id("b")["workspaceLabel"].clone()), (json!(null), json!("No workspace")));
+    }
+
+    #[test]
+    fn workspace_mode_groups_cards_and_describes_the_groups() {
+        let mut s = with_cwds(&[
+            ("n", None, AgentStatus::Running),
+            ("a1", Some("/work/a/app"), AgentStatus::Idle),
+            ("b1", Some("/work/b/app"), AgentStatus::Running),
+            ("a2", Some("/work/a/app/"), AgentStatus::Closed),
+        ]);
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace"})).unwrap();
+        assert_eq!(v["groupBy"], "workspace");
+        assert_eq!(group_labels(&v), [("b/app".to_owned(), 1, 0), ("a/app".to_owned(), 2, 1), ("No workspace".to_owned(), 1, 3)]);
+        let ids: Vec<&str> = v["cards"]["window"].as_array().unwrap().iter().map(|c| c["agentId"].as_str().unwrap()).collect();
+        assert_eq!(ids, ["b1", "a1", "a2", "n"], "group by group, card_order inside");
+        assert_eq!(v["groups"]["total"], 3);
+        assert!(v["groups"].get("layout").is_none(), "not virtualised");
+        assert_eq!(v["groups"]["window"][1]["path"], "/work/a/app");
+        assert_eq!(v["groups"]["window"][2]["path"], Value::Null);
+        assert_eq!(v["cards"]["window"][0]["workspaceLabel"], "b/app", "a card's label is its header's");
+        let flat = s.execute("document.inspect", json!({})).unwrap();
+        assert_eq!((&flat["totals"], &flat["statusChips"]), (&v["totals"], &v["statusChips"]), "grouping changes neither totals nor chips");
+    }
+
+    #[test]
+    fn filters_drop_empty_groups_and_change_counts() {
+        let mut s =
+            with_cwds(&[("a", Some("/w/one"), AgentStatus::Idle), ("b", Some("/w/two"), AgentStatus::Running), ("c", Some("/w/two"), AgentStatus::Idle)]);
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace", "filterStatuses": ["running"]})).unwrap();
+        assert_eq!(group_labels(&v), [("two".to_owned(), 1, 0)]);
+        assert_eq!(v["totals"]["of"], 1);
+    }
+
+    #[test]
+    fn a_virtualised_grouped_view_carries_every_group_size_and_the_touched_headers() {
+        // 500 agents in 200 workspaces (2 or 3 each), all idle.
+        let ids: Vec<String> = (0..500).map(|i| format!("a{i:03}")).collect();
+        let paths: Vec<String> = (0..500).map(|i| format!("/w/p{:03}", i % 200)).collect();
+        let rows: Vec<(&str, Option<&str>, AgentStatus)> = ids.iter().zip(&paths).map(|(i, p)| (i.as_str(), Some(p.as_str()), AgentStatus::Idle)).collect();
+        let mut s = with_cwds(&rows);
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace", "gridWindow": {"start": 250, "count": 40}})).unwrap();
+        let layout: Vec<u64> = v["groups"]["layout"].as_array().unwrap().iter().map(|n| n.as_u64().unwrap()).collect();
+        assert_eq!((layout.len(), layout.iter().sum::<u64>()), (200, 500));
+        assert_eq!(v["groups"]["total"], 200);
+        let (from, n) = (v["cards"]["start"].as_u64().unwrap(), v["cards"]["window"].as_array().unwrap().len() as u64);
+        assert!(n <= 200);
+        let heads = v["groups"]["window"].as_array().unwrap();
+        let expected: Vec<u64> = {
+            let mut first = 0;
+            let mut out = Vec::new();
+            for (i, c) in layout.iter().enumerate() {
+                if first < from + n && first + c > from {
+                    out.push(i as u64);
+                }
+                first += c;
+            }
+            out
+        };
+        assert_eq!(heads.len(), expected.len());
+        for (h, i) in heads.iter().zip(&expected) {
+            assert_eq!(h["label"], format!("p{i:03}"));
+            assert_eq!(h["count"], layout[*i as usize]);
+        }
+        assert!(heads.first().unwrap()["start"].as_u64().unwrap() <= from, "the first header may start before the slice");
+    }
+
+    #[test]
+    fn bad_group_by_is_refused_naming_the_values() {
+        let mut s = with_cwds(&[]);
+        for bad in [json!({"groupBy": "banana"}), json!({"groupBy": 3})] {
+            let EngineError::BadParams(m) = s.execute("document.inspect", bad).unwrap_err() else { panic!("not bad params") };
+            assert!(m.contains("none, workspace"), "{m}");
+        }
+    }
+
+    #[test]
+    fn hostile_workspaces_are_plain_short_labels() {
+        let long = format!("/{}", "x".repeat(500));
+        let mut s = with_cwds(&[("a", Some("/<img src=x onerror=alert(1)>"), AgentStatus::Idle), ("b", Some(long.as_str()), AgentStatus::Idle)]);
+        let v = s.execute("document.inspect", json!({"groupBy": "workspace"})).unwrap();
+        for g in v["groups"]["window"].as_array().unwrap() {
+            assert!(g["label"].as_str().unwrap().chars().count() <= 80);
+        }
+        assert!(group_labels(&v).iter().any(|(l, ..)| l == "<img src=x onerror=alert(1)>"));
+    }
     impl Session {
         fn clone_view(&mut self) -> Value {
             self.execute("document.inspect", Value::Null).unwrap()

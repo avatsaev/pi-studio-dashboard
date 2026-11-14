@@ -16,8 +16,10 @@ mod keys;
 mod rebuild;
 mod reduce_agent;
 mod reduce_stats;
+pub mod workspace;
 
 pub use apply::{apply, apply_batch, apply_in_place};
 pub use derive::{Filters, UsageTotals, card_order, daemon_status_counts, usage_totals};
 pub use drill::{DrillError, deselect as drill_deselect, select as drill_select};
 pub use reduce_stats::{needs_stats_tick, stats_tick};
+pub use workspace::{NO_WORKSPACE, WorkspaceGroup, grouped_order, label_of, workspace_labels, workspace_of};

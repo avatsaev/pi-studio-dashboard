@@ -50,6 +50,7 @@ pub fn build_with(w: &Wiring, detected: &LocalDaemon) -> AppShell {
     let mut app = AppShell::new(session, services::native());
     if let Some(dir) = &w.config_dir {
         startup::run(&mut app.session, dir, detected);
+        app.adopt_settings();
     }
     app
 }

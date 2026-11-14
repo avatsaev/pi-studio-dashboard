@@ -112,6 +112,7 @@
       "--pi-card-min-width": "280px",
       "--pi-card-height": "128px",
       "--pi-card-edge-width": "2px",
+      "--pi-group-header-height": "32px",
       "--pi-rail-width": "320px",
       "--pi-statusbar-height": "35px"
     }

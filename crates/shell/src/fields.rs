@@ -1,6 +1,7 @@
 //! One validator per `UiState` field, shared by `ui.set` and the `view.*` commands, so a value
 //! is accepted or refused identically whichever door it comes through.
 
+use pistudiodashboard_engine::{GroupBy, ZOOM_MAX, ZOOM_MIN};
 use pistudiodashboard_model::AgentStatus;
 use serde_json::Value;
 
@@ -78,6 +79,19 @@ fn diagnostics_target(v: &Value) -> Result<Option<String>, String> {
     }
 }
 
+/// `groupBy`: `none` or `workspace`.
+pub(crate) fn group_by(v: &Value) -> Result<GroupBy, String> {
+    v.as_str().and_then(GroupBy::from_name).ok_or_else(|| "`groupBy` is one of: none, workspace".to_owned())
+}
+
+/// `zoom`: a whole percent from the smallest to the largest allowed.
+pub(crate) fn zoom(v: &Value) -> Result<u16, String> {
+    v.as_u64()
+        .and_then(|z| u16::try_from(z).ok())
+        .filter(|z| (ZOOM_MIN..=ZOOM_MAX).contains(z))
+        .ok_or_else(|| format!("`zoom` is a whole percent from {ZOOM_MIN} to {ZOOM_MAX}"))
+}
+
 /// Validate and apply one `UiState` field by its wire name. On `Err` the state is unchanged.
 pub(crate) fn apply(ui: &mut UiState, key: &str, v: &Value) -> Result<(), String> {
     match key {
@@ -85,6 +99,8 @@ pub(crate) fn apply(ui: &mut UiState, key: &str, v: &Value) -> Result<(), String
         "filterDaemons" => ui.filter_daemons = filter_daemons(v)?,
         "filterStatuses" => ui.filter_statuses = filter_statuses(v)?,
         "attentionRailCollapsed" => ui.attention_rail_collapsed = v.as_bool().ok_or("`attentionRailCollapsed` must be a boolean")?,
+        "groupBy" => ui.group_by = group_by(v)?,
+        "zoom" => ui.zoom = zoom(v)?,
         "focusItem" if v.is_null() => ui.focus_item = None,
         "focusItem" => return Err("`focusItem` can only be cleared here (null); use `window.focusItem` to set it".into()),
         "gridWindow" => ui.grid_window = grid_window(v)?,

@@ -7,7 +7,7 @@
 //! - `ui.inspect`: the UI state, the monitor view (`document`) and the menu bar: exactly what the
 //!   frontend draws
 //! - `ui.set {theme?, filterDaemons?, filterStatuses?, attentionRailCollapsed?, focusItem?,
-//!   gridWindow?, dialog?, diagnosticsTarget?}`: validate every field, then apply all; an
+//!   gridWindow?, dialog?, diagnosticsTarget?, groupBy?, zoom?}`: validate every field, then apply all; an
 //!   unknown field, a bad value or a read-only field (`toasts`, `status`) is an error naming it
 //!   and nothing changes
 
@@ -15,6 +15,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 
 use serde_json::{Value, json};
 
+use crate::state::GridWindow;
 use crate::{AppShell, fields, menus};
 
 pub const METHODS: &[&str] = &["engine.commands", "engine.execute", "ui.inspect", "ui.set"];
@@ -79,6 +80,7 @@ pub fn view(app: &mut AppShell) -> Value {
         "filterStatuses": app.ui.filter_statuses,
         "gridWindow": app.ui.grid_window,
         "railCollapsed": app.ui.attention_rail_collapsed,
+        "groupBy": app.ui.group_by,
     });
     let mut document = app.session.execute("document.inspect", inspect).ok();
     // The diagnostics of the open panel: `null` when none is open or its daemon is gone.
@@ -130,6 +132,19 @@ fn set(app: &mut AppShell, params: &Value) -> Result<Value, String> {
     for (key, value) in requested {
         fields::apply(&mut next, key, value)?;
     }
+    let group_by = next.group_by;
+    // A changed layout starts at the top, unless the request also says where to look.
+    if group_by != app.ui.group_by && !requested.contains_key("gridWindow") {
+        next.grid_window = GridWindow::default();
+    }
     app.ui = next;
+    // `groupBy` is a saved setting: a change through here is stored like one from the menu.
+    if requested.contains_key("groupBy") {
+        app.session.set_group_by(group_by);
+    }
+    // `zoom` is saved too (and applied to the window by the app).
+    if requested.contains_key("zoom") {
+        app.session.set_zoom(app.ui.zoom);
+    }
     Ok(Value::Null)
 }

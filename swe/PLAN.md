@@ -3,7 +3,7 @@
 > Derived from the specs in `swe/specs/` (brief `swe/grills/daemon-monitoring-dashboard.md`,
 > decisions D1–D38) and the existing source (the av-rust-desktop scaffold). Sprints and tasks are in
 > implementation order. Execute with `av-swe implement`, one sprint at a time.
-> **Version:** 1 · **Updated:** 2026-11-13
+> **Version:** 2 · **Updated:** 2026-11-14 (v2: sprint 011, workspace grouping, from `specs/features/agent-workspace-grouping.md`)
 
 ## Strategy
 
@@ -22,6 +22,10 @@ Bottom-up, keeping `cargo xtask ci` green after every task (golden rule 8):
 5. **Hardening (009).** Load budgets (D33), a scripted pass against a real pi-studio dev daemon, docs.
 6. **Stage 2 (010).** Health and logs panels over the shipped `daemonObservability` API. pi-studio
    already shipped its side of both stages, so nothing here waits on another repo.
+7. **Workspace grouping (011).** Added after scoping on 2026-11-14. Depends only on sprint 006 (done)
+   and touches no code that sprints 007–010 plan to change beyond `view.rs`/`CardGrid.tsx` call sites,
+   so it is appended rather than renumbering the un-started sprints. Bottom-up again: L2 derivations
+   and the config key, then the engine view, the shell command, and the UI last.
 
 Pure logic (reducers, classification, ordering, bounds) lands in L1/L2 with unit and property tests;
 I/O lands only in L4 and the app binary; the frontend only draws the view.
@@ -39,8 +43,10 @@ I/O lands only in L4 and the app binary; the frontend only draws the view.
 | 008 | `sprints/sprint-008-notifications-tray` | OS notifications (coalesced, content-free), click-to-focus, tray, close-to-tray | 4 |
 | 009 | `sprints/sprint-009-stage1-hardening` | Load budgets, real-daemon acceptance pass, stage 1 docs | 3 |
 | 010 | `sprints/sprint-010-health-logs` | Stage 2: daemon health panel and live logs | 5 |
+| 011 | `sprints/sprint-011-workspace-grouping` | Workspace (`cwd`) on every card; group-by-workspace grid (default, switchable and persisted), virtualised | 7 |
+| 012 | `sprints/sprint-012-view-zoom` | View menu Zoom In / Out / Actual Size with shortcuts (added on request, 2026-11-14) | 1 |
 
-**Total: 10 sprints, 48 tasks.**
+**Total: 12 sprints, 56 tasks.**
 
 ## Task index
 
@@ -132,21 +138,39 @@ I/O lands only in L4 and the app binary; the frontend only draws the view.
 | task-004 | Health panel (UI) | feature | frontend | task-002, sprint-006/task-006 | features/daemon-health-and-logs.md · `src/components/` |
 | task-005 | Logs panel (UI) | feature | frontend | task-003, task-004 | features/daemon-health-and-logs.md · `src/components/` |
 
+### sprints/sprint-011-workspace-grouping
+| Task | Title | Type | Area | Depends on | Covers (specs + source) |
+|------|-------|------|------|-----------|------------------------|
+| task-001 | Workspace derivations: normalise, label, group order | feature | L2 | none (sprint-006 done) | features/agent-workspace-grouping.md, architecture/live-state.md · `crates/ingest/src/derive.rs` |
+| task-002 | `settings.groupBy` in the config file + engine save API | feature | L3/L5 | none | features/agent-workspace-grouping.md, architecture/config-and-secrets.md · `crates/config/src/{model,parse}.rs`, `crates/engine/src/daemon_cmds.rs` |
+| task-003 | Monitor view: workspace on cards, `groupBy` param, `groups` block | feature | L5 | task-001, task-002 | features/agent-workspace-grouping.md, features/agent-monitor.md · `crates/engine/src/view.rs`, `docs/control-protocol.md` |
+| task-004 | `view.setGroupBy`: UiState, View menu, `ui.set`, persistence, startup seed | feature | L6/app | task-002, task-003 | features/agent-workspace-grouping.md, architecture/app-structure.md · `crates/shell/src/{state,fields,menus,control,lib}.rs`, `src-tauri/src/owner.rs` |
+| task-005 | Workspace on cards and grouped sections (UI, non-virtualised) | feature | frontend | task-004 | features/agent-workspace-grouping.md, architecture/design-system.md · `src/lib/types.ts`, `src/components/{AgentCard,CardGrid,WorkspaceHeader}.tsx`, `src/tokens.css` |
+| task-006 | Virtualised grouped layout (UI) | feature | frontend | task-005 | features/agent-workspace-grouping.md, features/agent-monitor.md § Virtualisation · `src/components/CardGrid.tsx` |
+| task-007 | Smoke against pi-studio, screenshots, docs | test | cross-cutting | task-006 | features/agent-workspace-grouping.md · `swe/screenshots/`, `docs/control-protocol.md` |
+
+### sprints/sprint-012-view-zoom
+| Task | Title | Type | Area | Depends on | Covers (specs + source) |
+|------|-------|------|------|-----------|------------------------|
+| task-001 | View zoom: commands, saved setting, native webview zoom, shortcuts | feature | L3/L5/L6/app/frontend | none | features/view-zoom.md · `crates/{config,engine,shell}`, `src-tauri/src/{main,zoom}.rs`, `src/lib/shortcuts.ts` |
+
 ## Coverage check
 
 | Spec / module | Covered by |
 |---------------|-----------|
 | specs/overview.md | 001–010 (structure); 009/task-003 (docs) |
 | specs/features/daemon-connections.md | 004/task-003, 005/task-002…006 |
-| specs/features/agent-monitor.md | 002/task-004, 006/task-001…006 |
+| specs/features/agent-monitor.md | 002/task-004, 006/task-001…006; amendments by 011/task-003, 011/task-005, 011/task-006 |
+| specs/features/agent-workspace-grouping.md | 011/task-001…007 |
+| specs/features/view-zoom.md | 012/task-001 |
 | specs/features/attention-and-interventions.md | 007/task-001…005 |
 | specs/features/notifications-and-tray.md | 008/task-001…004 |
 | specs/features/daemon-health-and-logs.md | 010/task-001…005 |
-| specs/architecture/app-structure.md | 001/task-005, 002/task-002…005, 005/task-001, 005/task-004, 007/task-002 |
+| specs/architecture/app-structure.md | 001/task-005, 002/task-002…005, 005/task-001, 005/task-004, 007/task-002, 011/task-004 |
 | specs/architecture/protocol-client.md | 001/task-001…002, 004/task-001…005, 006/task-001, 006/task-003, 006/task-005, 010/task-001 |
-| specs/architecture/live-state.md | 001/task-003, 002/task-001, 006/task-002, 006/task-003, 006/task-005, 007/task-001, 009/task-001 |
-| specs/architecture/config-and-secrets.md | 001/task-004, 005/task-002, 005/task-003, 005/task-007 |
-| specs/architecture/design-system.md | 003/task-001…003, every UI task (snapshots) |
+| specs/architecture/live-state.md | 001/task-003, 002/task-001, 006/task-002, 006/task-003, 006/task-005, 007/task-001, 009/task-001, 011/task-001 |
+| specs/architecture/config-and-secrets.md | 001/task-004, 005/task-002, 005/task-003, 005/task-007, 011/task-002 |
+| specs/architecture/design-system.md | 003/task-001…003, every UI task (snapshots), 011/task-005 (`--pi-group-header-height`) |
 | Sample domain (`crates/doc`, `ops`, `format`, `item_cmds`, `file_cmds`, `edit_cmds`, `components/Items*`) | removed by 002/task-002, 002/task-004 |
 | `xtask` layers / wasm | 001/task-005 |
 | Brief acceptance 1–14 (stage 1) | feature tasks above; end-to-end in 009/task-002 |
@@ -156,6 +180,8 @@ No spec is uncovered.
 
 ## Open questions — TODO(verify)
 - [ ] Licence checks (golden rule 9) for `tokio-tungstenite`/`rustls`/`keyring`/`tauri-plugin-notification`/tray feature — resolved inside the tasks that add each crate (004/task-002, 005/task-003, 008/task-002, 008/task-003).
+- [ ] Workspace grouping (spec `agent-workspace-grouping.md`): `groupBy` is persisted and defaults to `workspace` (user decision, 2026-11-14; done in sprint 011); No-workspace group with a pending dialog sorts last (planned: yes, 011/task-001); no shortcut for `view.setGroupBy`; whether a daemon can change an agent's `cwd` (no shipped message carries it).
+- [ ] Plan-time finding: `theme` and `attentionRailCollapsed` are in the config file but nothing persists or seeds them yet; 011/task-002/004 build that path for `groupBy` only. Decide whether 008/task-004 should reuse it for theme and the rail flag.
 - [ ] Proposed numeric caps (50 daemon entries, 64-char names, 5,000 log lines, 2 KB dialog strings, 100 options, 15 s answer timeout) — confirm before 005/task-002 and 007/task-002.
 - [ ] Dismiss for dialogs (`cancelled: true`) is not planned; add a task if wanted.
 - [ ] Whether the dialog title may appear on lock-screen notifications (008/task-001 defaults to title ≤ 80 chars).

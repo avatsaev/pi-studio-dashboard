@@ -13,9 +13,12 @@
 //   --size WxH       size in CSS pixels (default 960x640)
 //   --scale N        device pixels per CSS pixel (default 2)
 //   --script JSON    control-protocol calls applied in order to the seeded monitor of the `view` example (default [])
+//   --agents N       add N bulk agents to the seeded monitor (a long, virtualised list)
 //   --view FILE      draw this saved view instead of asking the shell
 //   --click NAME     click the button with this accessible name first, e.g. a menu: --click View
 //   --browser NAME   chromium (default) or webkit
+//   --scroll-to-slice  scroll the card grid to where the shell's card slice starts (for a virtualised list, set
+//                      the slice with `ui.set {"gridWindow": {"start": N, "count": M}}` in --script)
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -42,6 +45,7 @@ const [width, height] = [Number(size[1]), Number(size[2])];
 const scale = Number(option("scale", "2")) || fail("--scale is a number");
 const browserName = option("browser", "chromium");
 const click = option("click", null);
+const scrollToSlice = process.argv.includes("--scroll-to-slice");
 
 if (!existsSync(path.join(dist, "index.html"))) {
   fail("the frontend is not built: run `npm run build` first");
@@ -50,7 +54,7 @@ if (!existsSync(path.join(dist, "index.html"))) {
 const saved = option("view", null);
 const view = saved
   ? readFileSync(saved, "utf8")
-  : execFileSync("cargo", ["run", "-q", "-p", "pistudiodashboard-shell", "--example", "view", "--", "--script", option("script", "[]")], {
+  : execFileSync("cargo", ["run", "-q", "-p", "pistudiodashboard-shell", "--example", "view", "--", "--script", option("script", "[]"), ...(option("agents", null) ? ["--agents", option("agents", "0")] : [])], {
       cwd: workspace,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "inherit"],
@@ -82,6 +86,16 @@ await page.goto(`${origin}/`);
 await page.waitForSelector("main");
 if (click) {
   await page.getByRole("button", { name: click, exact: true }).click();
+}
+if (scrollToSlice) {
+  // The frontend draws only the sent slice between spacers: the first drawn content starts at the top spacer.
+  await page.evaluate(() => {
+    const grid = document.querySelector('section[aria-label="Agents"]');
+    const rows = grid?.firstElementChild;
+    if (grid instanceof HTMLElement && rows instanceof HTMLElement) {
+      grid.scrollTop = Number.parseFloat(rows.style.paddingTop || "0");
+    }
+  });
 }
 // Let enter transitions (a toast fades in) finish; endless ones (spinners) are left running.
 await page.evaluate(() =>

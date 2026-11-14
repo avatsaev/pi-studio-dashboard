@@ -14,10 +14,12 @@ pub mod menus;
 pub mod services;
 pub mod shortcuts;
 pub mod state;
+pub mod zoom;
 
-use pistudiodashboard_engine::Session;
+use pistudiodashboard_engine::{GroupBy, Session};
 use pistudiodashboard_model::ConnState;
 use serde_json::Value;
+use state::GridWindow;
 
 pub use control::{Envelope, Request};
 pub use services::{LocalDaemon, Services};
@@ -34,6 +36,29 @@ pub struct AppShell {
 impl AppShell {
     pub fn new(session: Session, services: Services) -> Self {
         Self { session, ui: UiState::default(), services, waiting_prompts: Vec::new() }
+    }
+
+    /// Set the grouping mode: the UI state, the saved setting (the engine saves only on a change)
+    /// and, on a change, the grid window back to the top (the layout under it just changed).
+    pub fn set_group_by(&mut self, group_by: GroupBy) {
+        if self.ui.group_by != group_by {
+            self.ui.group_by = group_by;
+            self.ui.grid_window = GridWindow::default();
+        }
+        self.session.set_group_by(group_by);
+    }
+
+    /// Set the zoom (percent): the UI state, which the app applies to the window, and the saved setting.
+    pub fn set_zoom(&mut self, zoom: u16) {
+        self.ui.zoom = zoom;
+        self.session.set_zoom(zoom);
+    }
+
+    /// Take the saved settings the UI state mirrors; call once after the config is loaded.
+    pub fn adopt_settings(&mut self) {
+        let settings = &self.session.config().settings;
+        self.ui.group_by = settings.group_by;
+        self.ui.zoom = settings.zoom;
     }
 
     /// Run a command by id. Every click, shortcut, menu item and control request ends here:

@@ -28,13 +28,14 @@ mod runtime;
 mod services;
 mod startup;
 mod view_emitter;
+mod zoom;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc::channel;
 
 use clap::Parser;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 #[derive(Parser)]
 #[command(name = "pistudiodashboard", version, about = "Pi Studio Dashboard")]
@@ -87,14 +88,31 @@ fn main() {
         worker.shutdown();
         return;
     }
+    let zoom = Arc::new(zoom::Zoom::new());
+    let on_load = Arc::clone(&zoom);
     let result = tauri::Builder::default()
         .manage(bridge::Bridge::new(requests))
+        // A page that has just loaded starts at 100%: put the current level back.
+        .on_page_load(move |webview, payload| {
+            if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished)
+                && let Err(e) = webview.set_zoom(zoom::factor(on_load.get()))
+            {
+                log::warn!("cannot set the zoom: {e}");
+            }
+        })
         .invoke_handler(tauri::generate_handler![commands::control, commands::invoke_command])
         .setup(move |app| {
             let handle = app.handle().clone();
             std::thread::Builder::new().name("pistudiodashboard-owner".into()).spawn(move || {
                 let shell = owner::build(&wiring);
                 owner::run(&inbox, shell, |view| {
+                    if let Some(percent) = zoom::percent_of(view)
+                        && zoom.set(percent)
+                        && let Some(window) = handle.get_webview_window("main")
+                        && let Err(e) = window.set_zoom(zoom::factor(percent))
+                    {
+                        log::warn!("cannot set the zoom: {e}");
+                    }
                     if let Err(e) = handle.emit(bridge::VIEW_EVENT, view) {
                         log::warn!("cannot send the view to the window: {e}");
                     }

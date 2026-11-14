@@ -22,7 +22,7 @@ export function usageParts(usage: Usage, now: number): { tokens: string; cost: s
  * text from the daemon (never markup), cut to one line by CSS and clipped here as a second guard.
  * A click selects the agent; the card only draws what the shell says.
  */
-export function AgentCard({ card, now, onSelect }: { card: Card; now: number; onSelect: (card: Card) => void }) {
+export function AgentCard({ card, now, onSelect, showWorkspace = true }: { card: Card; now: number; onSelect: (card: Card) => void; showWorkspace?: boolean }) {
   const attention = card.attention.pendingDialogs > 0 ? "dialog" : card.attention.errored ? "error" : null;
   const usage = usageParts(card.usage, now);
   const state = attention === "dialog" ? styles.waiting : card.status === "running" ? styles.running : attention === "error" || card.status === "error" ? styles.failed : "";
@@ -44,6 +44,11 @@ export function AgentCard({ card, now, onSelect }: { card: Card; now: number; on
       </span>
       <span className={styles.meta}>
         <span className={styles.daemon}>{clip(card.daemonName, 80)}</span>
+        {showWorkspace && (
+          <span className={styles.workspace} title={card.cwd ?? card.workspaceLabel}>
+            {clip(card.workspaceLabel, 80)}
+          </span>
+        )}
         {card.model && <span className={styles.model}>{clip(card.model, 80)}</span>}
         {card.stale && <span className={styles.stale}>{card.staleSince === null ? "stale" : `stale since ${formatClock(card.staleSince, now)}`}</span>}
       </span>

@@ -8,6 +8,7 @@
 //! written from them (sprint-005/task-002). `theme` carries the user's *choice* (`system`
 //! included); the webview resolves `system` against the OS, never this crate.
 
+use pistudiodashboard_engine::GroupBy;
 use pistudiodashboard_model::{AgentStatus, ToastKind};
 use serde::{Deserialize, Serialize};
 
@@ -103,7 +104,7 @@ pub enum Dialog {
     },
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct UiState {
     pub theme: ThemeKind,
@@ -112,6 +113,10 @@ pub struct UiState {
     /// Empty = all statuses.
     pub filter_statuses: Vec<AgentStatus>,
     pub attention_rail_collapsed: bool,
+    /// How the card grid is laid out; saved in the config file (`settings.groupBy`).
+    pub group_by: GroupBy,
+    /// Zoom of the window's content in percent; saved in the config file (`settings.zoom`).
+    pub zoom: u16,
     pub focus_item: Option<FocusItem>,
     pub grid_window: GridWindow,
     pub dialog: Option<Dialog>,
@@ -122,6 +127,26 @@ pub struct UiState {
     pub status: String,
     #[serde(skip)]
     next_toast_id: u64,
+}
+
+impl Default for UiState {
+    fn default() -> Self {
+        Self {
+            theme: ThemeKind::default(),
+            filter_daemons: Vec::new(),
+            filter_statuses: Vec::new(),
+            attention_rail_collapsed: false,
+            group_by: GroupBy::default(),
+            zoom: crate::zoom::DEFAULT,
+            focus_item: None,
+            grid_window: GridWindow::default(),
+            dialog: None,
+            diagnostics_target: None,
+            toasts: Vec::new(),
+            status: String::new(),
+            next_toast_id: 0,
+        }
+    }
 }
 
 impl UiState {

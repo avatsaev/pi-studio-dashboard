@@ -14,6 +14,8 @@ const defaults: View["ui"] = {
   filterDaemons: [],
   filterStatuses: [],
   attentionRailCollapsed: false,
+  groupBy: "none",
+  zoom: 100,
   focusItem: null,
   gridWindow: { start: 0, count: 100 },
   dialog: null,
@@ -33,6 +35,11 @@ function menus(theme: View["ui"]["theme"]): View["menus"] {
         themeItem("dark", "Theme: Dark"),
         themeItem("light", "Theme: Light"),
         themeItem("system", "Theme: System"),
+        item("view.setGroupBy:none", "Group: None", { checked: true }),
+        item("view.setGroupBy:workspace", "Group: By Workspace", { checked: false }),
+        item("view.zoomIn", "Zoom In", { shortcut: { text: "Cmd+=", cmd: true, ctrl: false, shift: false, alt: false, key: "=" } }),
+        item("view.zoomOut", "Zoom Out", { shortcut: { text: "Cmd+-", cmd: true, ctrl: false, shift: false, alt: false, key: "-" } }),
+        item("view.zoomReset", "Actual Size", { shortcut: { text: "Cmd+0", cmd: true, ctrl: false, shift: false, alt: false, key: "0" }, enabled: false, reason: "already at 100%" }),
         item("view.toggleAttentionRail", "Toggle Attention Rail", {
           shortcut: { text: "Cmd+Shift+A", cmd: true, ctrl: false, shift: true, alt: false, key: "a" },
         }),
@@ -53,6 +60,8 @@ function card(agentId: string, title: string, status: Card["status"], more: Part
     daemonName: "workstation",
     title,
     model: "mock",
+    cwd: "/work/app",
+    workspaceLabel: "app",
     status,
     statusLabel: status,
     dimmed: status === "closed",
@@ -104,6 +113,7 @@ function monitor(more: Partial<MonitorView>): MonitorView {
     cards: { total: 0, start: 0, virtualised: false, window: [] },
     drill: null,
     railCollapsed: false,
+    groupBy: "none",
     ...more,
   };
 }

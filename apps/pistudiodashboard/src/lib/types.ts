@@ -49,6 +49,9 @@ export interface UiState {
   /** Empty = all statuses. */
   filterStatuses: AgentStatus[];
   attentionRailCollapsed: boolean;
+  groupBy: GroupBy;
+  /** Zoom of the window's content in percent; the app applies it to the webview, nothing here scales. */
+  zoom: number;
   focusItem: FocusItem | null;
   gridWindow: GridWindow;
   dialog: Dialog | null;
@@ -129,6 +132,10 @@ export interface Card {
   daemonName: string;
   title: string;
   model: string | null;
+  /** The agent's workspace: its working directory without trailing separators; null without one. */
+  cwd: string | null;
+  /** What to show for the workspace: the folder name (plus parents when two share it), or "No workspace". */
+  workspaceLabel: string;
   status: AgentStatus;
   /** The status word shown next to the dot (never colour alone). */
   statusLabel: string;
@@ -149,6 +156,33 @@ export interface CardWindow {
   start: number;
   virtualised: boolean;
   window: Card[];
+}
+
+/** How the grid is laid out (`UiState.groupBy`, saved in the config file). */
+export type GroupBy = "none" | "workspace";
+
+/** One section of the grouped grid: a workspace on one daemon. */
+export interface GroupHeader {
+  /** Stable and unique among the groups; the React key. */
+  key: string;
+  serverId: string;
+  daemonName: string;
+  label: string;
+  /** The full workspace path; null for the "No workspace" group. */
+  path: string | null;
+  count: number;
+  /** Index of the group's first card in the whole ordered list; it can lie before `cards.start`. */
+  start: number;
+  needsAttention: boolean;
+}
+
+/** Present with `groupBy: "workspace"`. */
+export interface GroupsView {
+  total: number;
+  /** The groups that touch `cards.window`. */
+  window: GroupHeader[];
+  /** Every group's card count, in order; only when `cards.virtualised`. */
+  layout?: number[];
 }
 
 /** One row of the drill-down timeline (`DrillItem` in crates/model/src/drill.rs). Plain text only. */
@@ -214,6 +248,8 @@ export interface MonitorView {
   cards: CardWindow;
   drill: DrillView | null;
   railCollapsed: boolean;
+  groupBy: GroupBy;
+  groups?: GroupsView;
   /** The open diagnostics panel's data (`ui.diagnosticsTarget`); absent when none is open, null when its daemon is gone. */
   diagnostics?: Diagnostics | null;
 }

@@ -25,6 +25,7 @@ pub use commands::{CommandSpec, command_specs, find};
 pub use daemon_cmds::{MAX_PASSWORD_BYTES, PasswordPrompt, redact_params, redact_request};
 pub use error::{EngineError, Result};
 pub use feed_cmds::Skipped;
+pub use pistudiodashboard_config::{GroupBy, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN};
 pub use services::{
     ConfigStore, EngineServices, Hook, Keychain, KeychainError, LinkCommand, LoadedConfig, Notification, NotifyAction, NotifyTarget, Secret, SendError,
 };

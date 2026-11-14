@@ -71,6 +71,8 @@ An unknown method is an error that lists the methods.
 | `filterDaemons` | Array of at most 50 serverIds, each 1-128 characters (empty = all daemons) |
 | `filterStatuses` | Array of distinct status words: `initializing`, `idle`, `running`, `error`, `closed`, `unknown` (empty = all) |
 | `attentionRailCollapsed` | Boolean |
+| `zoom` | A whole percent from 50 to 300, otherwise `` `zoom` is a whole percent from 50 to 300 ``. Saved to the config file; the app applies it to the window (page zoom) |
+| `groupBy` | `"none"` or `"workspace"`; otherwise `` `groupBy` is one of: none, workspace ``. A change is saved to the config file (`settings.groupBy`) and sends the card window back to the top unless the same request sets `gridWindow` |
 | `focusItem` | Only `null` (clear). Setting it is a later command |
 | `gridWindow` | `{"start": n, "count": n}`, non-negative integers, `count` at most 1,000 |
 | `dialog` | `null` (close) or a dialog object, with string ids of 1-128 characters: `{"kind": "daemonForm", "mode": "add" \| "edit", "entryId"?}`, `{"kind": "password", "entryId"}`, `{"kind": "confirmInterrupt", "serverId", "agentId"}`, `{"kind": "removeDaemon", "entryId"}`. This only opens or closes; submitting goes through commands |
@@ -79,23 +81,36 @@ An unknown method is an error that lists the methods.
 
 ### Commands
 
-- Engine: `command.list {filter?}`, `document.inspect {filterDaemons?, filterStatuses?, gridWindow?, railCollapsed?}`
+- Engine: `command.list {filter?}`, `document.inspect {filterDaemons?, filterStatuses?, gridWindow?, railCollapsed?, groupBy?}`
   and `feed.ingest {events}` (internal: the app's client feeds it batches of daemon events; a
   malformed batch is an error and changes nothing; the result lists `applied`, the `effects` the
   batch produced and any `skipped` ones with the reason).
 - Shell (`layer: "shell"`, view state only): `view.setTheme {theme}`, `view.filterDaemons {serverIds}`,
+  `view.setGroupBy {groupBy}` (View menu: `Group: None` / `Group: By Workspace`),
+  `view.zoomIn {}` (`Cmd+=`), `view.zoomOut {}` (`Cmd+-`) and `view.zoomReset {}` (`Cmd+0`; each disabled with its reason at the end of the range),
   `view.filterStatuses {statuses}`, `view.toggleAttentionRail {}` (`Cmd+Shift+A`) and
   `view.setGridWindow {start, count}`. They validate exactly like the matching `ui.set` field; a
-  failure shows up in `ui.status`.
+  failure shows up in `ui.status`. `view.setGroupBy` and the zoom commands are also saved: the choice
+  is written to the config file and restored at startup.
 - Agents (engine): `agent.select {serverId, agentId}` opens the drill-down (`document.drill`, in place
   of the attention rail) and `agent.deselect {}` closes it; `agent.deselect` is in the `Agent` menu
   with the shortcut `Escape` and is enabled only while a drill-down is open.
 - The card window: up to 100 cards `document.cards.window` holds all of them; above that
   (`cards.virtualised`) it holds the `gridWindow` the frontend reported plus 20 cards of overscan on
   each side, at most 200, and `cards.start` is the index of `window[0]` in the ordered list. A card
-  is `{serverId, agentId, daemonName, title, model, status, statusLabel, dimmed, stale, staleSince,
-  attention, currentTool, lastOutputLine, usage, selected}`; there is no `dot` field (the frontend
+  is `{serverId, agentId, daemonName, title, model, cwd, workspaceLabel, status, statusLabel, dimmed, stale,
+  staleSince, attention, currentTool, lastOutputLine, usage, selected}`; there is no `dot` field (the frontend
   derives the dot from `status` + `attention`). An `unknown` status counts and filters with `idle`.
+  `cwd` is the agent's workspace (its working directory without trailing separators, or null) and
+  `workspaceLabel` what to show for it (the folder name, with parent folders added when two workspaces
+  share a name; `No workspace` without a `cwd`).
+- Grouping: `groupBy` is `"none"` (the flat list; what a `document.inspect` without it returns) or `"workspace"` (the app's default: `ui.groupBy` starts as `workspace` unless the config file says `none`); anything else is an error naming both. The
+  view always carries `groupBy`. With `"workspace"` the cards are ordered group by group (a group is one
+  workspace on one daemon; groups with the best-ranked card first, `No workspace` last, then the usual
+  card order inside) and the view has `groups: {total, window, layout?}`. `window` lists the groups that
+  touch `cards.window` as `{key, serverId, daemonName, label, path, count, start, needsAttention}`
+  (`start` is the index of the group's first card in the whole ordered list; a group can begin before
+  `cards.start`). `layout`, only when `cards.virtualised`, holds the card count of every group in order.
 
 - Daemons (engine): `daemon.add {name, host, port, tls?, webUiUrl?, password?}`,
   `daemon.edit {entryId, name?, host?, port?, tls?, webUiUrl?}`, `daemon.remove {entryId}`,

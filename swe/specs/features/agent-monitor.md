@@ -7,6 +7,8 @@
 ## Purpose
 The main window: one card per live agent across all connected daemons, with status, current activity and usage at a glance, filterable by daemon and status, plus a live drill-down of the one selected agent's current turn. A monitor, not a second web UI: no transcript browsing, no prompts (D6, D2).
 
+> **Amended by** [agent-workspace-grouping.md](agent-workspace-grouping.md): cards carry `cwd` and `workspaceLabel`; `view.setGroupBy` adds an opt-in group-by-workspace layout (view gains `groupBy` and `groups`, `cards.window` follows the group order). The flat grid described below is the default (`groupBy: "none"`).
+
 ## Public contract
 
 ### Commands (registry; camelCase `<area>.<verb>`; all go through the engine, golden rule 3)

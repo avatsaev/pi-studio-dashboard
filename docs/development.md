@@ -64,7 +64,9 @@ Results are JSON lines on standard output; diagnostics go to standard error. Exi
 failed command, 2 a usage error.
 
 The UI without the app. `npm run snapshot` draws the real frontend in a headless browser and saves
-a PNG. The view it draws comes from the real shell (seeded with a few agents; `--view FILE` draws a saved view), after the control-protocol calls in `--script`.
+a PNG. The view it draws comes from the real shell (seeded with a few agents in several workspaces; `--view FILE` draws a saved view), after the control-protocol calls in `--script`.
+`--agents N` adds N bulk agents (a long, virtualised list) and `--scroll-to-slice` scrolls the grid to where
+the shell's card slice starts, e.g. `--agents 500 --scroll-to-slice --script '[["ui.set", {"groupBy": "workspace", "gridWindow": {"start": 240, "count": 30}}]]'`.
 
 ```sh
 cd apps/pistudiodashboard

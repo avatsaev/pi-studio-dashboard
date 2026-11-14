@@ -11,12 +11,14 @@ export function isMac(): boolean {
 export function matches(shortcut: Shortcut, event: KeyboardEvent, mac: boolean): boolean {
   const ctrl = mac ? shortcut.ctrl : shortcut.cmd || shortcut.ctrl;
   const meta = mac ? shortcut.cmd : false;
+  // Zoom in is `=`, and `+` is the same key with Shift (what people press on most layouts).
+  const plus = shortcut.key === "=" && !shortcut.shift && event.key === "+" && event.shiftKey;
   return (
     event.ctrlKey === ctrl &&
     event.metaKey === meta &&
-    event.shiftKey === shortcut.shift &&
+    (plus || event.shiftKey === shortcut.shift) &&
     event.altKey === shortcut.alt &&
-    event.key.toLowerCase() === shortcut.key
+    (plus || event.key.toLowerCase() === shortcut.key)
   );
 }
 

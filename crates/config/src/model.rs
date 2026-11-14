@@ -1,12 +1,16 @@
 //! Plain data types of the config file.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 /// Highest `version` this build understands.
 pub const SUPPORTED_VERSION: u32 = 1;
 /// At most this many daemon entries are loaded.
 pub const MAX_DAEMONS: usize = 50;
+/// Zoom of the window's content, in percent: the smallest, the largest and the default.
+pub const ZOOM_MIN: u16 = 50;
+pub const ZOOM_MAX: u16 = 300;
+pub const ZOOM_DEFAULT: u16 = 100;
 /// Larger files are treated as corrupt.
 pub const MAX_FILE_BYTES: usize = 1024 * 1024;
 /// Port used when an entry has no `port` key.
@@ -57,6 +61,35 @@ pub enum ThemeChoice {
     System,
 }
 
+/// How the agent grid is laid out: one section per workspace (`cwd`, the default), or one flat list.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GroupBy {
+    None,
+    #[default]
+    Workspace,
+}
+
+impl GroupBy {
+    /// The wire/config spelling; `from_name` is its inverse.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            GroupBy::None => "none",
+            GroupBy::Workspace => "workspace",
+        }
+    }
+
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "none" => Some(GroupBy::None),
+            "workspace" => Some(GroupBy::Workspace),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Notifications {
@@ -79,13 +112,24 @@ pub struct Settings {
     pub notifications: Notifications,
     pub close_to_tray: bool,
     pub attention_rail_collapsed: bool,
+    pub group_by: GroupBy,
+    /// Percent, `ZOOM_MIN..=ZOOM_MAX`.
+    pub zoom: u16,
     #[serde(flatten)]
     pub extra: Extra,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { theme: ThemeChoice::System, notifications: Notifications::default(), close_to_tray: true, attention_rail_collapsed: false, extra: Extra::new() }
+        Self {
+            theme: ThemeChoice::System,
+            notifications: Notifications::default(),
+            close_to_tray: true,
+            attention_rail_collapsed: false,
+            group_by: GroupBy::Workspace,
+            zoom: ZOOM_DEFAULT,
+            extra: Extra::new(),
+        }
     }
 }
 

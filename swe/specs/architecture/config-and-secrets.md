@@ -62,6 +62,8 @@ Unknown top-level keys and unknown keys inside entries/settings are **preserved*
 | `settings.notifications.failures` | bool | `true` | D9. |
 | `settings.closeToTray` | bool | `true` | D14. |
 | `settings.attentionRailCollapsed` | bool | `false` | Persisted UI preference (decision of this spec: the rail's collapsed state is a user expectation that survives restart); filters, selection, open panels are **not** persisted (D8). |
+| `settings.zoom` | integer | `100` | Whole percent `50`–`300` (view-zoom Z2); anything else → default + issue reported, file still loads. |
+| `settings.groupBy` | enum | `"workspace"` | `none` \| `workspace` (agent-workspace-grouping W3); unknown → default + issue reported, file still loads. |
 | `localDetectionDismissed` | bool | `false` | Set when the user removes the auto-detected entry, so it is not recreated (see daemon-connections). |
 | file size | | | > 1 MiB → treated as corrupt (hostile/garbage input). |
 
@@ -149,6 +151,8 @@ Orphaned keychain items (entries removed while the keychain was locked) are not 
 | `settings.setNotification {kind, enabled}` | `kind` ∈ `needsInput\|failures` else `invalid_kind` | `settings.notifications.<kind>` |
 | `settings.setCloseToTray {enabled}` | bool | `settings.closeToTray` |
 | `view.toggleAttentionRail` | none | `settings.attentionRailCollapsed` |
+| `view.zoomIn` / `view.zoomOut` / `view.zoomReset` | none (refused at the ends with a reason) | `settings.zoom` |
+| `view.setGroupBy {groupBy}` | `none\|workspace` else the error `` `groupBy` is one of: none, workspace `` (shell commands return a message, like `view.setTheme`) | `settings.groupBy` |
 | `daemon.add/edit/remove/setPassword` | see daemon-connections | `daemons` / keychain |
 
 Each persisted change saves via the debounced hook; notification and tray toggles take effect immediately in the app binary (mirrored into `UiState`).

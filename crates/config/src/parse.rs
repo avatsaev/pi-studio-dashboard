@@ -9,7 +9,8 @@ use std::collections::HashSet;
 use serde_json::{Map, Value};
 
 use crate::model::{
-    Config, ConfigIssue, DEFAULT_PORT, DaemonEntry, IssueKind, MAX_DAEMONS, MAX_FILE_BYTES, Notifications, SUPPORTED_VERSION, Settings, ThemeChoice, is_uuid_v4,
+    Config, ConfigIssue, DEFAULT_PORT, DaemonEntry, GroupBy, IssueKind, MAX_DAEMONS, MAX_FILE_BYTES, Notifications, SUPPORTED_VERSION, Settings, ThemeChoice,
+    ZOOM_MAX, ZOOM_MIN, is_uuid_v4,
 };
 use crate::validate::{check_host, check_name, check_port, check_server_id, check_web_ui_url};
 
@@ -125,6 +126,20 @@ fn parse_settings(value: Option<Value>, issues: &mut Issues) -> Settings {
             d.theme
         }
     };
+    let group_by = match obj.remove("groupBy") {
+        None => d.group_by,
+        Some(v) => v.as_str().and_then(GroupBy::from_name).unwrap_or_else(|| {
+            defaulted(issues, "settings.groupBy".into(), "unknown grouping; default used");
+            d.group_by
+        }),
+    };
+    let zoom = match obj.remove("zoom") {
+        None => d.zoom,
+        Some(v) => v.as_u64().and_then(|z| u16::try_from(z).ok()).filter(|z| (ZOOM_MIN..=ZOOM_MAX).contains(z)).unwrap_or_else(|| {
+            defaulted(issues, "settings.zoom".into(), "zoom is a whole percent from 50 to 300; default used");
+            d.zoom
+        }),
+    };
     let mut n = take_object(&mut obj, "notifications", "settings", issues);
     let notifications = Notifications {
         needs_input: take_bool(&mut n, "needsInput", "settings.notifications", true, issues),
@@ -136,6 +151,8 @@ fn parse_settings(value: Option<Value>, issues: &mut Issues) -> Settings {
         notifications,
         close_to_tray: take_bool(&mut obj, "closeToTray", "settings", d.close_to_tray, issues),
         attention_rail_collapsed: take_bool(&mut obj, "attentionRailCollapsed", "settings", false, issues),
+        group_by,
+        zoom,
         extra: obj,
     }
 }
@@ -310,6 +327,47 @@ mod tests {
             assert_eq!(o.config.settings, Settings::default(), "{c}");
             assert!(o.config.daemons.is_empty(), "{c}");
             assert_eq!(o.config.version, 1);
+        }
+    }
+
+    #[test]
+    fn group_by_loads_defaults_and_round_trips() {
+        assert_eq!(run("{}").config.settings.group_by, GroupBy::Workspace, "grouping by workspace is the default");
+        let none = run("{}");
+        assert!(none.issues.is_empty());
+        let o = run(r#"{"settings":{"groupBy":"none"}}"#);
+        assert_eq!((o.config.settings.group_by, o.issues.len()), (GroupBy::None, 0));
+        let again = run(&String::from_utf8(serialize(&o.config)).unwrap());
+        assert_eq!(again.config.settings.group_by, GroupBy::None, "a flat choice survives a save and reload");
+        assert!(again.config.settings.extra.is_empty(), "the key is typed, not left in `extra`");
+    }
+
+    #[test]
+    fn zoom_loads_within_its_range_and_defaults_with_one_issue_otherwise() {
+        assert_eq!(run("{}").config.settings.zoom, 100);
+        assert!(run("{}").issues.is_empty());
+        for good in ["50", "125", "300"] {
+            let o = run(&format!(r#"{{"settings":{{"zoom":{good}}}}}"#));
+            assert_eq!((o.config.settings.zoom.to_string(), o.issues.len()), (good.to_owned(), 0));
+        }
+        let o = run(&String::from_utf8(serialize(&run(r#"{"settings":{"zoom":150}}"#).config)).unwrap());
+        assert_eq!(o.config.settings.zoom, 150);
+        assert!(o.config.settings.extra.is_empty());
+        for bad in ["49", "301", "0", "-5", "1.5", "\"big\"", "null", "70000"] {
+            let o = run(&format!(r#"{{"settings":{{"zoom":{bad}}},"daemons":[{{"name":"a","host":"h"}}]}}"#));
+            assert_eq!(o.config.settings.zoom, 100, "{bad}");
+            assert_eq!(o.issues.iter().filter(|i| i.path == "settings.zoom").count(), 1, "{bad}");
+            assert_eq!(o.config.daemons.len(), 1, "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_bad_group_by_defaults_with_one_issue_and_keeps_the_daemons() {
+        for bad in [r#""banana""#, "7", "null", r#""Workspace""#] {
+            let o = run(&format!(r#"{{"settings":{{"groupBy":{bad}}},"daemons":[{{"name":"a","host":"h"}}]}}"#));
+            assert_eq!(o.config.settings.group_by, GroupBy::Workspace, "{bad}");
+            assert_eq!(o.issues.iter().filter(|i| i.path == "settings.groupBy" && i.kind == IssueKind::DefaultedValue).count(), 1, "{bad}");
+            assert_eq!(o.config.daemons.len(), 1, "{bad}");
         }
     }
 

@@ -32,11 +32,11 @@ impl UsageTotals {
     }
 }
 
-fn needs_attention(a: &AgentEntry) -> bool {
+pub(crate) fn needs_attention(a: &AgentEntry) -> bool {
     a.attention.pending_dialogs > 0 || a.attention.errored
 }
 
-fn rank(a: &AgentEntry) -> u8 {
+pub(crate) fn rank(a: &AgentEntry) -> u8 {
     if needs_attention(a) {
         return 0;
     }
@@ -50,7 +50,7 @@ fn rank(a: &AgentEntry) -> u8 {
 
 /// Visible agents with their daemon's config position: not archived, daemon known and not a
 /// duplicate, passing the daemon and status filters.
-fn scope<'a>(state: &'a MonitorState, f: &Filters) -> Vec<(usize, &'a AgentEntry)> {
+pub(crate) fn scope<'a>(state: &'a MonitorState, f: &Filters) -> Vec<(usize, &'a AgentEntry)> {
     let mut out = Vec::new();
     for (pos, d) in state.daemons.iter().enumerate() {
         let Some(sid) = d.server_id.as_deref() else { continue };
@@ -66,9 +66,9 @@ fn scope<'a>(state: &'a MonitorState, f: &Filters) -> Vec<(usize, &'a AgentEntry
     out
 }
 
-type SortKey<'a> = (u8, usize, bool, Reverse<i64>, bool, &'a str, &'a str);
+pub(crate) type SortKey<'a> = (u8, usize, bool, Reverse<i64>, bool, &'a str, &'a str);
 
-fn sort_key<'a>(pos: usize, a: &'a AgentEntry) -> SortKey<'a> {
+pub(crate) fn sort_key<'a>(pos: usize, a: &'a AgentEntry) -> SortKey<'a> {
     (rank(a), pos, a.last_activity.is_none(), Reverse(a.last_activity.unwrap_or(0)), a.title.is_none(), a.title.as_deref().unwrap_or(""), a.agent_id.as_str())
 }
 

@@ -86,6 +86,8 @@
   /* Every card is this tall: the grid's window maths needs exact rows (CardGrid.tsx reads it). */
   --pi-card-height: 128px;
   --pi-card-edge-width: 2px;
+  /* Every grouped-grid section title is this tall: the virtualised layout's offsets are exact because of it. */
+  --pi-group-header-height: 32px;
   --pi-rail-width: 320px;
   --pi-statusbar-height: 35px;
 }

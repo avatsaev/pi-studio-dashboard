@@ -147,6 +147,8 @@ Full shapes: [architecture/live-state.md](architecture/live-state.md).
 |------|------|-------|-------------|
 | [features/daemon-connections.md](features/daemon-connections.md) | feature | 1 | Add/edit/remove daemons, local auto-detect, connection states, auth/host errors, duplicates, degraded banners, diagnostics |
 | [features/agent-monitor.md](features/agent-monitor.md) | feature | 1 | Card grid across daemons, filters, ordering, usage, live drill-down |
+| [features/agent-workspace-grouping.md](features/agent-workspace-grouping.md) | feature | 1 | Workspace (`cwd`) on every card and an opt-in group-by-workspace grid: normalisation, labels, group order, windowed layout, persisted preference |
+| [features/view-zoom.md](features/view-zoom.md) | feature | 1 | View menu Zoom In / Zoom Out / Actual Size with shortcuts, native webview zoom, saved level |
 | [features/attention-and-interventions.md](features/attention-and-interventions.md) | feature | 1 | Attention rail, answering `confirm`/`select` dialogs, interrupt, open in web UI, races |
 | [features/notifications-and-tray.md](features/notifications-and-tray.md) | feature | 1 | OS notifications (content-free, coalesced), click-to-focus, tray, close-to-tray |
 | [features/daemon-health-and-logs.md](features/daemon-health-and-logs.md) | feature | 2 | Health panel and live log tail over the stage 2 daemon API |

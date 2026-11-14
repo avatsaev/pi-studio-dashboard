@@ -12,3 +12,6 @@ pistudiodashboard-engine = { workspace = true }
 pistudiodashboard-model = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+pistudiodashboard-config = { workspace = true }

@@ -17,3 +17,16 @@
 .empty {
   padding-top: 15vh;
 }
+
+/* Grouped mode: one section per workspace, each its own card grid under a fixed-height title. */
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pi-spacing-12);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pi-spacing-12);
+}

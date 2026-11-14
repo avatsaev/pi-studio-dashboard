@@ -30,6 +30,21 @@ describe("shortcuts", () => {
     expect(findShortcut(menus, key({ key: "q", ctrlKey: true }), false)).toBeNull();
   });
 
+  it("takes both = and + for zoom in, and - and 0 for the others, never with a stray modifier", () => {
+    const zoomIn: Shortcut = { text: "Cmd+=", cmd: true, ctrl: false, shift: false, alt: false, key: "=" };
+    const zoomOut: Shortcut = { ...zoomIn, text: "Cmd+-", key: "-" };
+    expect(matches(zoomIn, key({ key: "=", ctrlKey: true }), false)).toBe(true);
+    expect(matches(zoomIn, key({ key: "+", ctrlKey: true, shiftKey: true }), false)).toBe(true);
+    expect(matches(zoomIn, key({ key: "+", metaKey: true, shiftKey: true }), true)).toBe(true);
+    expect(matches(zoomIn, key({ key: "+", ctrlKey: true }), false)).toBe(false);
+    expect(matches(zoomIn, key({ key: "+", ctrlKey: true, shiftKey: true, altKey: true }), false)).toBe(false);
+    expect(matches(zoomIn, key({ key: "=", ctrlKey: true, shiftKey: true }), false)).toBe(false);
+    expect(matches(zoomOut, key({ key: "-", ctrlKey: true }), false)).toBe(true);
+    expect(matches(zoomOut, key({ key: "_", ctrlKey: true, shiftKey: true }), false)).toBe(false);
+    expect(formatShortcut(zoomIn, true)).toBe("⌘=");
+    expect(formatShortcut(zoomOut, false)).toBe("Ctrl+-");
+  });
+
   it("leaves undo to a text field that has the focus", () => {
     const field = document.createElement("input");
     document.body.append(field);

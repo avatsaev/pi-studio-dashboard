@@ -21,8 +21,8 @@ mod io;
 mod location;
 
 pub use model::{
-    Config, ConfigIssue, DEFAULT_PORT, DaemonEntry, IssueKind, MAX_DAEMONS, MAX_FILE_BYTES, Notifications, SUPPORTED_VERSION, Settings, ThemeChoice,
-    new_entry_id,
+    Config, ConfigIssue, DEFAULT_PORT, DaemonEntry, GroupBy, IssueKind, MAX_DAEMONS, MAX_FILE_BYTES, Notifications, SUPPORTED_VERSION, Settings, ThemeChoice,
+    ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, new_entry_id,
 };
 pub use parse::{ParseOutcome, parse, serialize};
 pub use validate::{FieldError, normalise_host, validate_entry};

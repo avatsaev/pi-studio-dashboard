@@ -3041,6 +3041,7 @@ dependencies = [
 name = "pistudiodashboard-shell"
 version = "0.1.0"
 dependencies = [
+ "pistudiodashboard-config",
  "pistudiodashboard-engine",
  "pistudiodashboard-model",
  "serde",

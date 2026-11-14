@@ -23,6 +23,18 @@ describe("AgentCard", () => {
     expect(button.textContent).not.toContain("as of");
   });
 
+  it("shows the workspace after the daemon, with the full path as its tooltip, unless the header already says it", () => {
+    const withCwd = card("a", "t", "idle", { cwd: "/work/a/app", workspaceLabel: "a/app" });
+    const { rerender } = render(<AgentCard card={withCwd} now={NOW} onSelect={() => {}} />);
+    const workspace = screen.getByText("a/app");
+    expect(workspace.getAttribute("title")).toBe("/work/a/app");
+    expect(workspace.previousElementSibling?.textContent).toBe("workstation");
+    rerender(<AgentCard card={withCwd} now={NOW} onSelect={() => {}} showWorkspace={false} />);
+    expect(screen.queryByText("a/app")).toBeNull();
+    rerender(<AgentCard card={card("a", "t", "idle", { cwd: null, workspaceLabel: "No workspace" })} now={NOW} onSelect={() => {}} />);
+    expect(screen.getByText("No workspace")).toBeTruthy();
+  });
+
   it("reads '—' for tokens and cost without usage, and 'as of <time>' when the snapshot is old", () => {
     const { rerender } = render(<AgentCard card={card("a", "t", "idle")} now={NOW} onSelect={() => {}} />);
     expect(screen.getByText("— tokens")).toBeTruthy();

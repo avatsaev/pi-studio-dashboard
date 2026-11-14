@@ -207,6 +207,7 @@ needs_attention(agent) = attention.pendingDialogs > 0 or attention.errored
 card_order(filters): cards = agents where !archived, daemon not duplicate, matching daemon (serverId) and status filters
     rank = 0 if needs_attention else {running:1, error:2, idle:3, initializing:3, Unknown:3, closed:4}
     sort by (rank, daemon config order, lastActivity desc nulls last, title asc, agentId asc)       # total order
+grouped_order(filters): same scope as card_order; bucket by (serverId, workspace_of(cwd)); groups sorted by (cwd absent last, best card rank, daemon order, label, path); cards inside a group by the card_order sort      # total order; see features/agent-workspace-grouping.md
 ```
 `lastActivity` for sorting is bumped only by status/title changes and by item raise — **not** by `agent_stream` — so cards don't jump while streaming. Status filter values are `AgentStatus` per app-structure; "needs attention" is represented by rank/flag, not a filter chip.
 ```

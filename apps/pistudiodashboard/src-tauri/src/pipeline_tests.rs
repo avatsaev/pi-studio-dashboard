@@ -185,3 +185,33 @@ fn a_daemon_that_is_not_there_is_added_but_stays_unconnected() {
     assert_ne!(view["document"]["daemonChips"][0]["conn"], "live");
     assert_eq!(view["document"]["cards"]["total"], 0);
 }
+
+/// The grouping choice survives a restart: restored from the file, and a change reaches the file.
+#[test]
+fn the_saved_grouping_is_restored_at_startup_and_a_change_is_saved() {
+    use pistudiodashboard_engine::GroupBy;
+    let start = |dir: &std::path::Path| {
+        let (requests, _inbox) = channel();
+        let worker = Arc::new(IoWorker::start(Some(dir.to_owned()), requests.clone(), Arc::new(NoStore)));
+        let client = runtime::start_client(requests);
+        let wiring = Wiring { client, worker: Arc::clone(&worker), config_dir: Some(dir.to_owned()) };
+        (owner::build_with(&wiring, &local(1)), worker)
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("config.json");
+    std::fs::write(&file, r#"{"version":1,"settings":{"groupBy":"none","zoom":150}}"#).unwrap();
+    let (mut app, worker) = start(dir.path());
+    assert_eq!(app.ui.group_by, GroupBy::None, "a saved flat layout comes back flat");
+    assert_eq!(app.ui.zoom, 150, "a saved zoom comes back");
+    app.run("view.setGroupBy", json!({"groupBy": "workspace"})).unwrap();
+    app.run("view.zoomOut", json!({})).unwrap();
+    worker.shutdown();
+    assert!(
+        std::fs::read_to_string(&file).unwrap().contains("\"groupBy\": \"workspace\"") && std::fs::read_to_string(&file).unwrap().contains("\"zoom\": 125")
+    );
+
+    let fresh = tempfile::tempdir().unwrap();
+    let (grouped, worker) = start(fresh.path());
+    assert_eq!((grouped.ui.group_by, grouped.ui.zoom), (GroupBy::Workspace, 100), "no file, no key: grouped by workspace at 100%");
+    worker.shutdown();
+}
