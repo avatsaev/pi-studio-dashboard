@@ -28,7 +28,7 @@ proptest = { version = "1", default-features = false, features = ["std"] }
 clap = { version = "4", features = ["derive", "env"] }
 # `std`: the app installs its own boxed logger.
 log = { version = "0.4", features = ["std"] }
-getrandom = "0.3"
+getrandom = "0.4"
 # OS keychain (app binary only; FORBIDDEN_DEPS below the apps). v4 default `v1` feature: Keychain on macOS, Credential Manager on Windows, Secret Service over pure-Rust zbus on Linux (no libdbus). MIT OR Apache-2.0.
 keyring = "4"
 # L4 client only (FORBIDDEN_DEPS below the apps): runtime, WebSocket, rustls with native roots (no OpenSSL, no MPL root data).
